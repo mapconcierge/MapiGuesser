@@ -1,0 +1,9 @@
+{
+  "name": "mapiguesser",
+  "version": "1.0.0",
+  "description": "Geo guessing game with Mapillary and MapLibre",
+  "scripts": {
+    "test": "echo \"No tests\""
+  },
+  "license": "Apache-2.0"
+}
