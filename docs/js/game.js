@@ -76,7 +76,7 @@ async function loadNewPano() {
   const pano = await fetchRandomPano();
   actualCoords = { lat: pano.lat, lng: pano.lng };
   if (!viewer) {
-    viewer = new Mapillary.Viewer({
+    viewer = new mapillary.Viewer({
       container: 'mly',
       accessToken: MAPILLARY_API_KEY,
       imageId: pano.id
