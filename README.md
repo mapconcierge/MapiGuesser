@@ -2,11 +2,6 @@
 
 Geo Guessing game using Mapillary 360° panoramas and MapLibre GL JS.
 
-## Live Demo
-
-Hosted at [https://mapconcierge.github.io/MapiGuesser/](https://mapconcierge.github.io/MapiGuesser/).
-
-This demo includes a Mapillary access token baked into `docs/js/config.js` for convenience.
 
 ## Setup
 
