@@ -2,6 +2,7 @@
 
 Geo Guessing game using Mapillary 360° panoramas and MapLibre GL JS.
 
+
 ## Setup
 
 1. `cp js/config.example.js js/config.js` and set your Mapillary API key in `js/config.js`.
