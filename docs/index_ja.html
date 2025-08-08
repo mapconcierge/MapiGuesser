@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ja">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>MapiGuesser</title>
+  <title>Mapillary × MapLibre — GeoGuessr-like (Regions + URL default)</title>
 
   <!-- MapLibre GL JS -->
   <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.6.2/dist/maplibre-gl.css" />
@@ -22,7 +22,7 @@
       --accent: #00b3a4; --accent-2: #4e7df2;
     }
     html, body { margin: 0; height: 100%; width: 100%; background: var(--bg); color: var(--text);
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Noto Sans, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji"; }
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Noto Sans JP, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji"; }
     .app { display: grid; grid-template-rows: auto 1fr; height: 100%; gap: 8px; }
     header { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 12px; padding: 10px 14px; background: var(--panel); border-bottom: 1px solid #1f2633; }
     header h1 { margin: 0; font-size: 16px; font-weight: 700; letter-spacing: .2px; }
@@ -68,9 +68,9 @@
 <body>
   <div class="app">
     <header>
-      <h1>MapiGuesser<span class="badge">v0.5.0</span></h1>
+      <h1>MapiGuesser <span class="badge">v0.5.0</span></h1>
       <div class="controls">
-        <label>Region:
+        <label>エリア:
           <select id="regionSelect">
             <option value="WORLD">World (beta)</option>
             <option value="EUROPE">Europe</option>
@@ -81,51 +81,51 @@
             <option value="N_AMERICA">North America</option>
             <option value="JAPAN">Japan</option>
             <option value="ITALY">Italy</option>
-            <option value="MILANO">Milan (center)</option>
+            <option value="MILANO">Milano (center)</option>
           </select>
         </label>
-        <label>Rounds:
+        <label>ラウンド数:
           <select id="roundsSelect">
             <option>5</option><option selected>10</option><option>20</option>
           </select>
         </label>
-        <label>Question filter:
+        <label>出題条件:
           <select id="filterSelect">
-            <option value="NONE">No restriction</option>
-            <option value="TRAFFIC_SIGN_ANY">Traffic signs (any)</option>
-            <option value="TRAFFIC_SIGN_PICK">Traffic signs (pick types)</option>
+            <option value="NONE">制限なし</option>
+            <option value="TRAFFIC_SIGN_ANY">交通標識あり（何でも）</option>
+            <option value="TRAFFIC_SIGN_PICK">交通標識（種類を選択）</option>
           </select>
         </label>
-        <button id="newGameBtn" class="primary">New game</button>
-        <button id="skipBtn">Skip</button>
-        <button id="exportAllBtn" class="ghost">Export all rounds (GeoJSON)</button>
-        <button id="clearAllBtn" class="ghost" title="Clear accumulated results to start a new session">Clear accumulated</button>
+        <button id="newGameBtn" class="primary">新しいゲーム</button>
+        <button id="skipBtn">スキップ</button>
+        <button id="exportAllBtn" class="ghost">全ラウンドをGeoJSON保存</button>
+        <button id="clearAllBtn" class="ghost" title="累積をクリア（新しいセッションにしたいとき）">累積クリア</button>
       </div>
     </header>
 
     <div class="layout">
-      <div id="mly" aria-label="Mapillary JS 360° viewer"></div>
+      <div id="mly" aria-label="Mapillary JS 360°ビューア"></div>
 
       <div class="right">
         <!-- Sign Picker -->
         <div class="panel" id="signPickerPanel" style="display:none">
-          <div class="legend">Pick traffic sign types (OR condition)</div>
+          <div class="legend">交通標識の種類をチェック（OR 条件）</div>
           <div class="grid2">
             <div class="fieldset">
-              <div class="legend">Families (prefix match)</div>
-              <div class="checkbox"><input type="checkbox" class="family" value="regulatory--" id="fam-reg"><label for="fam-reg">regulatory-- (regulatory)</label></div>
-              <div class="checkbox"><input type="checkbox" class="family" value="warning--" id="fam-war"><label for="fam-war">warning-- (warning)</label></div>
-              <div class="checkbox"><input type="checkbox" class="family" value="information--" id="fam-inf"><label for="fam-inf">information-- (information)</label></div>
-              <div class="checkbox"><input type="checkbox" class="family" value="complementary--" id="fam-com"><label for="fam-com">complementary-- (complementary)</label></div>
-              <div class="checkbox"><input type="checkbox" class="family" value="temporary--" id="fam-temp"><label for="fam-temp">temporary-- (temporary)</label></div>
-              <div class="checkbox"><input type="checkbox" class="family" value="other-sign" id="fam-oth"><label for="fam-oth">other-sign (others)</label></div>
+              <div class="legend">ファミリー（prefix一致）</div>
+              <div class="checkbox"><input type="checkbox" class="family" value="regulatory--" id="fam-reg"><label for="fam-reg">regulatory--（規制）</label></div>
+              <div class="checkbox"><input type="checkbox" class="family" value="warning--" id="fam-war"><label for="fam-war">warning--（警告）</label></div>
+              <div class="checkbox"><input type="checkbox" class="family" value="information--" id="fam-inf"><label for="fam-inf">information--（案内）</label></div>
+              <div class="checkbox"><input type="checkbox" class="family" value="complementary--" id="fam-com"><label for="fam-com">complementary--（補助）</label></div>
+              <div class="checkbox"><input type="checkbox" class="family" value="temporary--" id="fam-temp"><label for="fam-temp">temporary--（仮設）</label></div>
+              <div class="checkbox"><input type="checkbox" class="family" value="other-sign" id="fam-oth"><label for="fam-oth">other-sign（その他）</label></div>
               <div class="chips">
-                <button id="checkAllFam" class="ghost">Select all</button>
-                <button id="clearAllFam" class="ghost">Clear all</button>
+                <button id="checkAllFam" class="ghost">全選択</button>
+                <button id="clearAllFam" class="ghost">全解除</button>
               </div>
             </div>
             <div class="fieldset">
-              <div class="legend">Representative types (prefix match)</div>
+              <div class="legend">代表的な種別（prefix一致）</div>
               <label class="checkbox"><input type="checkbox" class="type" value="regulatory--stop">stop</label>
               <label class="checkbox"><input type="checkbox" class="type" value="regulatory--give-way">give-way / yield</label>
               <label class="checkbox"><input type="checkbox" class="type" value="regulatory--no-entry">no-entry</label>
@@ -140,19 +140,19 @@
         <!-- Basemap switcher + Map -->
         <div class="panel">
           <div class="row">
-            <label>Basemap:
+            <label>地図レイヤ:
               <select id="basemapSelect">
-                <option value="OSM_STD">OpenStreetMap Standard</option>
-                <option value="ESRI_IMG">Esri Imagery</option>
+                <option value="OSM_STD">OpenStreetMap 標準</option>
+                <option value="ESRI_IMG">Esri 航空写真</option>
                 <option value="OSM_HOT">HOT Humanitarian</option>
               </select>
             </label>
           </div>
-          <div id="map" aria-label="MapLibre GL JS map (for guessing)"></div>
+          <div id="map" aria-label="MapLibre GL JS 地図（推測用）"></div>
           <div class="row" style="margin-top:8px">
-            <button id="submitBtn" class="primary">Make this guess</button>
-            <button id="clearBtn" class="ghost">Clear pin</button>
-            <span class="hint">Click on the map to place a pin → then press “Make this guess”.</span>
+            <button id="submitBtn" class="primary">この場所に決定</button>
+            <button id="clearBtn" class="ghost">ピンをクリア</button>
+            <span class="hint">地図をクリックでピンを置く → 決定</span>
           </div>
         </div>
 
@@ -161,19 +161,19 @@
           <div class="score">
             <div>Round <span id="roundNum">0</span>/<span id="roundMax">0</span></div>
             <div class="big"><span id="score">0</span> pts</div>
-            <div class="muted">total</div>
+            <div class="muted">累計</div>
             <span class="pill" id="lastDistance">—</span>
           </div>
-          <div class="result" id="result">Look around the 360° panorama and make your guess!</div>
+          <div class="result" id="result">360°パノラマを見て場所を推測してください。</div>
           <div class="small" style="margin-top:10px">
-            Hint: <span class="kbd">Shift</span> + drag to pan / mouse wheel to zoom
+            ヒント: <span class="kbd">Shift</span>＋ドラッグで視点のパン / ホイールでズーム
           </div>
           <div class="small" id="detSummary" style="margin-top:8px; opacity:.85"></div>
         </div>
 
         <div class="panel">
           <div class="small">
-            Uses Mapillary Graph API v4: <span class="kbd">/images</span>, <span class="kbd">/{image_id}/detections</span>.
+            Mapillary API（Graph v4）の <span class="kbd">/images</span>, <span class="kbd">/{image_id}/detections</span> を使用。<br/>
           </div>
         </div>
       </div>
@@ -182,38 +182,38 @@
 
   <!-- Result dialog -->
   <dialog id="resultDialog">
-    <h3 class="dialog-title">Result</h3>
+    <h3 class="dialog-title">判定結果</h3>
     <div class="dialog-msg" id="dialogMsg"></div>
     <div class="dialog-actions">
-      <button id="downloadGeoJSON" class="primary">Download this round (GeoJSON)</button>
-      <button id="nextRoundBtn" class="ghost">Next round</button>
-      <button id="closeDialogBtn">Close</button>
+      <button id="downloadGeoJSON" class="primary">このラウンドをGeoJSON保存</button>
+      <button id="nextRoundBtn" class="ghost">次のラウンドへ</button>
+      <button id="closeDialogBtn">閉じる</button>
     </div>
   </dialog>
 
   <script>
-    // 1) Put your Mapillary Access Token here
+    // 1) 自分の Mapillary Access Token を入れてください
     //const MAPILLARY_TOKEN = "MLY|PUT_YOUR_TOKEN_HERE";
     const MAPILLARY_TOKEN = "MLY|24235641766046915|000d3d2e3e39d1df6841a80d7d647f4d";
 
-    // 2) Regions
+    // 2) 出題エリア
     const REGION_BOXES = {
       WORLD:   {latMin: -58, latMax: 75, lonMin: -180, lonMax: 180, sizeDeg: 0.6},
       EUROPE:  {latMin: 35,  latMax: 71, lonMin: -11,  lonMax: 30,  sizeDeg: 0.6},
       N_AMERICA:{latMin: 14, latMax: 72, lonMin: -168, lonMax: -52, sizeDeg: 0.8},
       ASIA:    {latMin: -10, latMax: 77, lonMin: 26,   lonMax: 180, sizeDeg: 0.7},
       AFRICA:  {latMin: -35, latMax: 38, lonMin: -19,  lonMax: 52,  sizeDeg: 0.7},
-      LATAM:   {latMin: -56, latMax: 33, lonMin: -118, lonMax: -34, sizeDeg: 0.8},
+      LATAM:   {latMin: -56, latMax: 33, lonMin: -118, lonMax: -34, sizeDeg: 0.8}, // Latin America
       OCEANIA: {latMin: -50, latMax: 15, lonMin: 110,  lonMax: 180, sizeDeg: 0.8},
       JAPAN:   {latMin: 24,  latMax: 46, lonMin: 122,  lonMax: 146, sizeDeg: 0.35},
       ITALY:   {latMin: 36.5,latMax: 47.5,lonMin: 6.5, lonMax: 18.8, sizeDeg: 0.35},
-      // Milan center (tight bounding box around Duomo area)
+      // Milano center (Duomo 周辺を含む中心部に絞った矩形）
       MILANO:  {latMin: 45.445, latMax: 45.490, lonMin: 9.170, lonMax: 9.220, sizeDeg: 0.020},
     };
-    const MAX_FETCH_TRIES = 60;
+    const MAX_FETCH_TRIES = 60; // 地域によりヒットが疎な場合があるので余裕を持たせる
     const MAX_PER_BBOX_CANDIDATES = 18;
 
-    // 3) State
+    // 3) 状態
     let map, viewer;
     let currentTruth = null;   // {lng, lat, imageId}
     let guessMarker = null;
@@ -225,7 +225,7 @@
     let lastGeoJSON = null;
     let lastFilename = null;
 
-    // --- Accumulate all-round results ---
+    // --- 全ラウンド分の蓄積 ---
     let allFeatures = [];
     let gameId = null;
     let gameStartISO = null;
@@ -248,7 +248,7 @@
 
     function setBasemap(mode) {
       map.setStyle(STYLES[mode] || STYLES.OSM_STD);
-      // Restore line after style switch
+      // スタイル切替後、ラインを復元
       map.once("styledata", () => { restoreGuessLine(); });
     }
 
@@ -272,7 +272,7 @@
       viewer = new Viewer({ accessToken: MAPILLARY_TOKEN, container: "mly", imageId, component: { cover: false } });
     }
 
-    // ---- Detection filter (values only; no overlays) ----
+    // ---- 検出フィルタ ----
     function getFilterMode() { return document.getElementById("filterSelect").value; }
     function getSelectedFamilies() { return Array.from(document.querySelectorAll(".family:checked")).map(el => el.value); }
     function getSelectedTypes() { return Array.from(document.querySelectorAll(".type:checked")).map(el => el.value); }
@@ -303,7 +303,7 @@
       return (json && json.data ? json.data : []).map(d => d.value).filter(Boolean);
     }
 
-    // ---- Random pano picker (with optional detection filter) ----
+    // ---- 画像ピック（フィルタあり） ----
     async function pickRandomPano(regionKey) {
       const r = REGION_BOXES[regionKey] || REGION_BOXES.WORLD;
       const size = r.sizeDeg;
@@ -355,16 +355,16 @@
           console.warn("Fetch attempt failed", attempt, err);
         }
       }
-      throw new Error("No candidates matched the conditions. Change the filter/area and try again.");
+      throw new Error("条件に合う候補が見つかりませんでした。出題条件やエリアを変更して再試行してください。");
     }
 
-    // ---- Game flow ----
+    // ---- ゲーム進行 ----
     function resetRoundUI() {
       if (map && map.getSource(lineId)) { map.removeLayer(lineId); map.removeSource(lineId); }
       if (truthMarker) { truthMarker.remove(); truthMarker = null; }
       if (guessMarker) { guessMarker.remove(); guessMarker = null; }
       document.getElementById("lastDistance").textContent = "—";
-      document.getElementById("result").textContent = "Look around the 360° panorama and make your guess!";
+      document.getElementById("result").textContent = "360°パノラマを見て場所を推測してください。";
       document.getElementById("detSummary").textContent = "";
       lastGeoJSON = null; lastFilename = null;
     }
@@ -382,19 +382,19 @@
 
         initViewer(pano.imageId);
 
-        // Detection summary (when filter is active)
+        // 検出要約表示（フィルタ時のみ）
         const dets = pano.detValues || [];
         if (dets.length) {
           const uniq = uniqueTopN(dets, 8);
           document.getElementById("detSummary").innerHTML =
-            `Detections in this image: <span class="kbd">${uniq.join("</span>, <span class='kbd'>")}</span> etc.`;
+            `この画像に検出: <span class="kbd">${uniq.join("</span>, <span class='kbd'>")}</span> など`;
         } else if (getFilterMode() !== "NONE") {
-          document.getElementById("detSummary").textContent = "Detections: 0 (retried nearby candidates)";
+          document.getElementById("detSummary").textContent = "検出: 0（近隣候補リトライ済み）";
         }
       } catch (err) {
         round -= 1;
         updateRoundInfo();
-        alert("Failed to fetch an image: " + err.message);
+        alert("画像の取得に失敗しました: " + err.message);
       } finally {
         setButtonsBusy(false);
       }
@@ -496,7 +496,7 @@
 
     function exportAllRounds() {
       if (!allFeatures.length) {
-        alert("No rounds to export yet. Please judge a round first.");
+        alert("まだ保存できるラウンドがありません。まずはラウンドを判定してください。");
         return;
       }
       const fc = asFeatureCollection(allFeatures, "mly-geoguessr-all-answers");
@@ -506,22 +506,37 @@
     }
 
     function clearAllRounds() {
-      if (!allFeatures.length) return alert("There is nothing to clear.");
-      if (!confirm("Clear all accumulated results?")) return;
+      if (!allFeatures.length) return alert("クリアするものはありません。");
+      if (!confirm("累積した全ラウンドの結果をクリアします。よろしいですか？")) return;
       allFeatures = [];
-      alert("Cleared accumulated results.");
+      alert("累積をクリアしました。");
     }
 
     function endOrContinue() {
       if (round >= maxRounds) {
-        alert(`Game over! Total score: ${score} pts`);
+        alert(`ゲーム終了！ 総合スコア: ${score} 点`);
       } else {
         nextRound();
       }
     }
 
+    // --- URL パラメータからデフォルト地域を設定 (?region=ASIA / ?r=latam 等) ---
+    function applyInitialRegionFromURL() {
+      const sp = new URLSearchParams(location.search);
+      let r = sp.get("region") || sp.get("r");
+      if (!r) return;
+      r = r.trim().toUpperCase().replace(/[^A-Z_]/g, "");
+      // 別名を吸収
+      if (r === "LATINAMERICA" || r === "LATIN_AMERICA" || r === "LATIN" || r === "LATINAM" ) r = "LATAM";
+      if (r === "OCEANEA") r = "OCEANIA";
+      if (REGION_BOXES[r]) {
+        const sel = document.getElementById("regionSelect");
+        sel.value = r;
+      }
+    }
+
     async function onSubmit() {
-      if (!currentTruth || !guessMarker) { alert("Please place your guess pin on the map first."); return; }
+      if (!currentTruth || !guessMarker) { alert("地図上に推測ピンを置いてください。"); return; }
       setButtonsBusy(true);
       try {
         const guess = guessMarker.getLngLat();
@@ -532,8 +547,8 @@
         document.getElementById("lastDistance").textContent = distanceKm.toFixed(1) + " km";
         document.getElementById("score").textContent = String(score);
         document.getElementById("result").innerHTML =
-          `Correct location: <b>${truth[1].toFixed(5)}, ${truth[0].toFixed(5)}</b>.<br/>
-           Distance from your guess: <b>${distanceKm.toFixed(1)} km</b>. Round score: <b>${pts} pts</b>.`;
+          `正解は <b>${truth[1].toFixed(5)}, ${truth[0].toFixed(5)}</b>。<br/>
+           推測との差は <b>${distanceKm.toFixed(1)} km</b>、このラウンドの得点は <b>${pts} 点</b>。`;
         addTruthMarker();
         drawLine([guess.lng, guess.lat], truth);
         const bounds = new maplibregl.LngLatBounds();
@@ -553,40 +568,26 @@
 
         // Per-round download dialog
         const roundFC = asFeatureCollection(feats, `mly-answer-round${roundNum}`);
-        const msg = `Correct location was <b>${truth[1].toFixed(5)}, ${truth[0].toFixed(5)}</b>.<br/>`
-          + `Distance from your answer was <b>${distanceKm.toFixed(1)} km</b>!`;
+        const msg = `正解は <b>${truth[1].toFixed(5)}, ${truth[0].toFixed(5)}</b> でした。<br/>`
+          + `あなたの答えとの距離は <b>${distanceKm.toFixed(1)} km</b> でした！`;
         const ts = new Date().toISOString().replace(/[:T]/g,'-').slice(0,19);
         const fname = `mly-answer-round${roundNum}-${ts}.geojson`;
         openResultDialog(msg, roundFC, fname);
 
       } catch (err) {
-        alert("Scoring failed: " + err.message);
+        alert("判定に失敗しました: " + err.message);
       } finally {
         setButtonsBusy(false);
       }
     }
 
-    // ---- URL param to set default region (?region=ASIA or ?r=latam) ----
-    function applyInitialRegionFromURL() {
-      const sp = new URLSearchParams(location.search);
-      let r = sp.get("region") || sp.get("r");
-      if (!r) return;
-      r = r.trim().toUpperCase().replace(/[^A-Z_]/g, "");
-      if (r === "LATINAMERICA" || r === "LATIN_AMERICA" || r === "LATIN" || r === "LATINAM" ) r = "LATAM";
-      if (r === "OCEANEA") r = "OCEANIA";
-      if (REGION_BOXES[r]) {
-        const sel = document.getElementById("regionSelect");
-        sel.value = r;
-      }
-    }
-
-    // ---- Utils ----
+    // ---- ユーティリティ ----
     function randBetween(min, max) { return min + Math.random() * (max - min); }
     function shuffle(a) { for (let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; }
     function uniqueTopN(values, n) { const m=new Map(); for (const v of values) m.set(v,(m.get(v)||0)+1); return [...m.entries()].sort((a,b)=>b[1]-a[1]).slice(0,n).map(([k])=>k); }
     function makeGameId() { return Math.random().toString(36).slice(2, 10); }
 
-    // ---- Events ----
+    // ---- イベント ----
     window.addEventListener("DOMContentLoaded", () => {
       initMap();
 
@@ -596,21 +597,21 @@
       document.getElementById("newGameBtn").addEventListener("click", () => {
         score = 0; round = 0; maxRounds = parseInt(document.getElementById("roundsSelect").value, 10) || 10;
         updateRoundInfo();
-        // New game: clear accumulation and create new gameId
+        // 新しいゲーム：累積はクリアして新しい gameId
         allFeatures = [];
         gameId = makeGameId();
         gameStartISO = new Date().toISOString();
         nextRound();
       });
 
-      // Filter UI toggle
+      // フィルタ UI 切替
       document.getElementById("filterSelect").addEventListener("change", (e) => {
         const mode = e.target.value;
         document.getElementById("signPickerPanel").style.display = (mode === "TRAFFIC_SIGN_PICK") ? "block" : "none";
       });
       document.getElementById("filterSelect").dispatchEvent(new Event("change"));
 
-      // Select/Clear all
+      // 全選択/全解除
       document.getElementById("checkAllFam").addEventListener("click", () => {
         document.querySelectorAll(".family").forEach(el => el.checked = true);
       });
@@ -622,7 +623,7 @@
       document.getElementById("exportAllBtn").addEventListener("click", exportAllRounds);
       document.getElementById("clearAllBtn").addEventListener("click", clearAllRounds);
 
-      // Apply URL default region → auto-start a new game
+      // URL デフォルト地域適用 → 自動開始
       applyInitialRegionFromURL();
       document.getElementById("newGameBtn").click();
     });
