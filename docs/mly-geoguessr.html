@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mapillary × MapLibre GL JS GeoGuessr-like</title>
+
+  <!-- MapLibre GL JS -->
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.6.2/dist/maplibre-gl.css" />
+  <script src="https://unpkg.com/maplibre-gl@5.6.2/dist/maplibre-gl.js"></script>
+
+  <!-- MapillaryJS -->
+  <link rel="stylesheet" href="https://unpkg.com/mapillary-js@4.1.2/dist/mapillary.css" />
+  <script src="https://unpkg.com/mapillary-js@4.1.2/dist/mapillary.js"></script>
+
+  <!-- Turf.js (distance計算) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Turf.js/6.5.0/turf.min.js"></script>
+
+  <style>
+    :root {
+      --bg: #0f1115;
+      --panel: #151a22;
+      --text: #e9eef5;
+      --muted: #aab3c2;
+      --accent: #00b3a4;
+      --accent-2: #4e7df2;
+      --danger: #ff5a5f;
+    }
+    html, body {
+      margin: 0;
+      height: 100%;
+      width: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Noto Sans JP, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+    }
+    .app {
+      display: grid;
+      grid-template-rows: auto 1fr;
+      height: 100%;
+      gap: 8px;
+    }
+    header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 14px;
+      background: var(--panel);
+      border-bottom: 1px solid #1f2633;
+    }
+    header h1 {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: .2px;
+    }
+    header .controls {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    select, button, input {
+      background: #0d1117;
+      color: var(--text);
+      border: 1px solid #2b3242;
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 13px;
+    }
+    button.primary { background: linear-gradient(90deg, var(--accent), var(--accent-2)); border: none; }
+    button.danger { background: var(--danger); border: none; }
+    button:disabled { opacity: .6; cursor: not-allowed; }
+    .layout {
+      display: grid;
+      grid-template-columns: 1.2fr .8fr;
+      gap: 8px;
+      padding: 8px;
+    }
+    #mly { height: calc(100vh - 90px); border-radius: 10px; overflow: hidden; background:#000; }
+    #map { height: calc(60vh - 90px); border-radius: 10px; overflow: hidden; }
+    .right {
+      display: grid;
+      grid-template-rows: 1fr auto;
+      gap: 8px;
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid #1f2633;
+      border-radius: 10px;
+      padding: 10px;
+    }
+    .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .score {
+      display: flex; gap: 16px; align-items: baseline; margin: 6px 0 12px;
+    }
+    .score .big { font-size: 22px; font-weight: 800; }
+    .score .muted { color: var(--muted); font-size: 12px; }
+    .result { margin-top: 10px; font-size: 14px; line-height: 1.45; }
+    .small { color: var(--muted); font-size: 12px; }
+    .footer { display:flex; justify-content: space-between; align-items:center; }
+    .link { color: var(--accent-2); text-decoration: none; }
+    .hint { color: var(--muted); font-size: 12px; margin-left: 4px; }
+    .pill { background: #0d1117; border: 1px solid #2b3242; border-radius: 999px; padding: 6px 10px; font-size: 12px;}
+    .kbd { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>GeoGuessr-like with Mapillary × MapLibre</h1>
+      <div class="controls">
+        <label>
+          エリア:
+          <select id="regionSelect" title="出題エリア">
+            <option value="WORLD">World (beta)</option>
+            <option value="EUROPE">Europe</option>
+            <option value="N_AMERICA">North America</option>
+            <option value="JAPAN">Japan</option>
+            <option value="ITALY">Italy</option>
+          </select>
+        </label>
+        <label>
+          ラウンド数:
+          <select id="roundsSelect">
+            <option>5</option>
+            <option selected>10</option>
+            <option>20</option>
+          </select>
+        </label>
+        <button id="newGameBtn" class="primary">新しいゲーム</button>
+        <button id="skipBtn">スキップ</button>
+      </div>
+    </header>
+
+    <div class="layout">
+      <div id="mly" aria-label="Mapillary JS 360°ビューア"></div>
+
+      <div class="right">
+        <div class="panel">
+          <div id="map" aria-label="MapLibre GL JS 地図（推測用）"></div>
+          <div class="row" style="margin-top:8px">
+            <button id="submitBtn" class="primary">この場所に決定</button>
+            <button id="clearBtn">ピンをクリア</button>
+            <span class="hint">地図をクリックでピンを置く → 決定</span>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="score">
+            <div>Round <span id="roundNum">0</span>/<span id="roundMax">0</span></div>
+            <div class="big"><span id="score">0</span> pts</div>
+            <div class="muted">累計</div>
+            <span id="lastDistance" class="pill">—</span>
+          </div>
+          <div class="result" id="result">360°パノラマを見て場所を推測してください。</div>
+          <div class="small" style="margin-top:10px">
+            ヒント: <span class="kbd">Shift</span>＋ドラッグで視点のパン / ホイールでズーム
+          </div>
+        </div>
+
+        <div class="panel footer">
+          <div class="small">
+            Mapillary API と MapillaryJS, MapLibre GL JS, Turf.js を使用。<br/>
+            <span class="hint">学習・プロトタイプ目的。Mapillary の ToS を遵守してください。</span>
+          </div>
+          <a class="link" href="https://www.mapillary.com/" target="_blank" rel="noopener">Mapillary</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 1) ここに自分の Mapillary Access Token を入れてください（形式: MLY|...）
+    //    https://www.mapillary.com/ → Login → Developer → Register application
+    //const MAPILLARY_TOKEN = "MLY|PUT_YOUR_TOKEN_HERE";
+    const MAPILLARY_TOKEN = "MLY|24235641766046915|000d3d2e3e39d1df6841a80d7d647f4d";
+
+    // 2) 出題ロジック設定 ------------------
+    const REGION_BOXES = {
+      WORLD: {latMin: -58, latMax: 75, lonMin: -180, lonMax: 180, sizeDeg: 0.6},
+      EUROPE: {latMin: 35, latMax: 71, lonMin: -11, lonMax: 30, sizeDeg: 0.6},
+      N_AMERICA: {latMin: 14, latMax: 72, lonMin: -168, lonMax: -52, sizeDeg: 0.8},
+      JAPAN: {latMin: 24, latMax: 46, lonMin: 122, lonMax: 146, sizeDeg: 0.35},
+      ITALY: {latMin: 36.5, latMax: 47.5, lonMin: 6.5, lonMax: 18.8, sizeDeg: 0.35},
+    };
+    const MAX_FETCH_TRIES = 30; // ランダムBBOXの最大トライ回数
+
+    // 3) 状態 ------------------------------
+    let map, viewer;
+    let currentTruth = null;   // {lng, lat, imageId}
+    let guessMarker = null;
+    let truthMarker = null;
+    let lineId = "guess-line";
+    let score = 0;
+    let round = 0;
+    let maxRounds = 10;
+
+    // 4) 初期化 ----------------------------
+    function initMap() {
+      map = new maplibregl.Map({
+        container: "map",
+        style: "https://demotiles.maplibre.org/style.json",
+        center: [12, 20],
+        zoom: 1.6,
+        attributionControl: true,
+      });
+      map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }));
+
+      map.on("click", (e) => {
+        setGuess([e.lngLat.lng, e.lngLat.lat]);
+      });
+    }
+
+    function initViewer(imageId) {
+      // すでに存在する場合は再利用して imageId だけ切り替え
+      if (viewer) {
+        viewer.moveTo(imageId).catch(console.error);
+        return;
+      }
+      const container = "mly";
+      const { Viewer } = mapillary;
+      viewer = new Viewer({
+        accessToken: MAPILLARY_TOKEN,
+        container: container,
+        imageId: imageId,
+        component: { cover: false },
+      });
+    }
+
+    // 5) Mapillary API からランダム360°画像を取得 ----
+    async function pickRandomPano(regionKey) {
+      const r = REGION_BOXES[regionKey] || REGION_BOXES.WORLD;
+      const size = r.sizeDeg;
+
+      for (let attempt = 1; attempt <= MAX_FETCH_TRIES; attempt++) {
+        const lon = randBetween(r.lonMin, r.lonMax);
+        const lat = randBetween(r.latMin, r.latMax);
+        const bbox = [
+          lon - size / 2,
+          lat - size / 2,
+          lon + size / 2,
+          lat + size / 2,
+        ];
+
+        const url = new URL("https://graph.mapillary.com/images");
+        const params = {
+          access_token: MAPILLARY_TOKEN,
+          fields: "id,computed_geometry,thumb_2048_url",
+          is_pano: true,
+          limit: 25,
+          bbox: bbox.join(","),
+        };
+        Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
+
+        try {
+          const res = await fetch(url.toString());
+          if (!res.ok) throw new Error("API error " + res.status);
+          const json = await res.json();
+          const arr = json && json.data ? json.data : [];
+          if (arr.length > 0) {
+            // 返ってきた候補からランダムに1つ選ぶ
+            const chosen = arr[Math.floor(Math.random() * arr.length)];
+            if (chosen && chosen.computed_geometry && chosen.computed_geometry.coordinates) {
+              const [lng, lat] = chosen.computed_geometry.coordinates;
+              return { imageId: chosen.id, lng, lat };
+            }
+          }
+        } catch (err) {
+          console.warn("Fetch attempt failed", attempt, err);
+        }
+      }
+      throw new Error("候補が見つかりませんでした。エリアやラウンドを変更して再試行してください。");
+    }
+
+    // 6) ゲーム進行 ------------------------
+    function resetRoundUI() {
+      // 既存のライン/真値ピンを消す
+      if (map && map.getSource(lineId)) {
+        map.removeLayer(lineId);
+        map.removeSource(lineId);
+      }
+      if (truthMarker) { truthMarker.remove(); truthMarker = null; }
+      if (guessMarker) { guessMarker.remove(); guessMarker = null; }
+      document.getElementById("lastDistance").textContent = "—";
+      document.getElementById("result").textContent = "360°パノラマを見て場所を推測してください。";
+    }
+
+    async function nextRound() {
+      resetRoundUI();
+      round += 1;
+      updateRoundInfo();
+      setButtonsBusy(true);
+
+      try {
+        const region = document.getElementById("regionSelect").value;
+        const pano = await pickRandomPano(region);
+        currentTruth = { lng: pano.lng, lat: pano.lat, imageId: pano.imageId };
+
+        initViewer(pano.imageId);
+      } catch (err) {
+        round -= 1; // ロールバック
+        updateRoundInfo();
+        alert("画像の取得に失敗しました: " + err.message);
+      } finally {
+        setButtonsBusy(false);
+      }
+    }
+
+    function updateRoundInfo() {
+      document.getElementById("roundNum").textContent = String(round);
+      document.getElementById("roundMax").textContent = String(maxRounds);
+      document.getElementById("score").textContent = String(score);
+    }
+
+    function setButtonsBusy(b) {
+      document.getElementById("submitBtn").disabled = b;
+      document.getElementById("skipBtn").disabled = b;
+      document.getElementById("newGameBtn").disabled = b;
+      document.getElementById("clearBtn").disabled = b;
+    }
+
+    function setGuess(lngLat) {
+      if (guessMarker) guessMarker.remove();
+      guessMarker = new maplibregl.Marker({ draggable: true })
+        .setLngLat(lngLat)
+        .addTo(map);
+      map.easeTo({ center: lngLat, zoom: Math.max(map.getZoom(), 2.5) });
+    }
+
+    function addTruthMarker() {
+      truthMarker = new maplibregl.Marker({ color: "#00b3a4" })
+        .setLngLat([currentTruth.lng, currentTruth.lat])
+        .addTo(map);
+    }
+
+    function drawLine(guess, truth) {
+      const line = {
+        "type": "FeatureCollection",
+        "features": [{
+          "type": "Feature",
+          "geometry": { "type": "LineString", "coordinates": [guess, truth] },
+          "properties": {}
+        }]
+      };
+      if (map.getSource(lineId)) {
+        map.getSource(lineId).setData(line);
+      } else {
+        map.addSource(lineId, { type: "geojson", data: line });
+        map.addLayer({
+          id: lineId,
+          type: "line",
+          source: lineId,
+          paint: { "line-width": 3 }
+        });
+      }
+    }
+
+    function calcScore(distanceKm) {
+      // 単純スコア: 5000点満点、距離に応じて逓減（5000 / (1 + d/250)）
+      const base = 5000 / (1 + distanceKm / 250);
+      return Math.round(base);
+    }
+
+    function endOrContinue() {
+      if (round >= maxRounds) {
+        alert(`ゲーム終了！ 総合スコア: ${score} 点`);
+      } else {
+        nextRound();
+      }
+    }
+
+    async function onSubmit() {
+      if (!currentTruth || !guessMarker) {
+        alert("地図上に推測ピンを置いてください。");
+        return;
+      }
+      setButtonsBusy(true);
+
+      try {
+        const guess = guessMarker.getLngLat();
+        const truth = [currentTruth.lng, currentTruth.lat];
+        const distanceKm = turf.distance(
+          turf.point([guess.lng, guess.lat]),
+          turf.point(truth),
+          { units: "kilometers" }
+        );
+        const pts = calcScore(distanceKm);
+        score += pts;
+
+        // UI更新
+        document.getElementById("lastDistance").textContent = distanceKm.toFixed(1) + " km";
+        document.getElementById("score").textContent = String(score);
+        document.getElementById("result").innerHTML =
+          `正解は <b>${truth[1].toFixed(5)}, ${truth[0].toFixed(5)}</b> でした。<br/>
+           あなたの推測との差は <b>${distanceKm.toFixed(1)} km</b>、このラウンドの得点は <b>${pts} 点</b>。`;
+
+        // 地図に真値マーカーと線を描画
+        addTruthMarker();
+        drawLine([guess.lng, guess.lat], truth);
+
+        // 真値が見えるようにフィット
+        const bounds = new maplibregl.LngLatBounds();
+        bounds.extend([guess.lng, guess.lat]);
+        bounds.extend(truth);
+        map.fitBounds(bounds, { padding: 50, duration: 1000 });
+
+        // 次へ
+        setTimeout(endOrContinue, 1200);
+      } catch (err) {
+        alert("判定に失敗しました: " + err.message);
+      } finally {
+        setButtonsBusy(false);
+      }
+    }
+
+    // 7) ユーティリティ ---------------------
+    function randBetween(min, max) {
+      return min + Math.random() * (max - min);
+    }
+
+    // 8) イベント配線 -----------------------
+    window.addEventListener("DOMContentLoaded", () => {
+      initMap();
+
+      document.getElementById("submitBtn").addEventListener("click", onSubmit);
+      document.getElementById("clearBtn").addEventListener("click", () => {
+        if (guessMarker) { guessMarker.remove(); guessMarker = null; }
+      });
+      document.getElementById("skipBtn").addEventListener("click", () => nextRound());
+      document.getElementById("newGameBtn").addEventListener("click", () => {
+        score = 0;
+        round = 0;
+        maxRounds = parseInt(document.getElementById("roundsSelect").value, 10) || 10;
+        updateRoundInfo();
+        nextRound();
+      });
+
+      // 自動的にゲーム開始
+      document.getElementById("newGameBtn").click();
+    });
+  </script>
+</body>
+</html>
