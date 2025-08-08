@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mapillary × MapLibre — GeoGuessr-like (Overlays + Basemaps)</title>
+
+  <!-- MapLibre GL JS -->
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.6.2/dist/maplibre-gl.css" />
+  <script src="https://unpkg.com/maplibre-gl@5.6.2/dist/maplibre-gl.js"></script>
+
+  <!-- MapillaryJS -->
+  <link rel="stylesheet" href="https://unpkg.com/mapillary-js@4.1.2/dist/mapillary.css" />
+  <script src="https://unpkg.com/mapillary-js@4.1.2/dist/mapillary.js"></script>
+
+  <!-- Turf.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Turf.js/6.5.0/turf.min.js"></script>
+
+  <style>
+    :root {
+      --bg: #0f1115; --panel: #151a22; --text: #e9eef5; --muted: #aab3c2;
+      --accent: #00b3a4; --accent-2: #4e7df2; --danger: #ff5a5f;
+    }
+    html, body { margin: 0; height: 100%; width: 100%; background: var(--bg); color: var(--text);
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Noto Sans JP, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji"; }
+    .app { display: grid; grid-template-rows: auto 1fr; height: 100%; gap: 8px; }
+    header { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 12px; padding: 10px 14px; background: var(--panel); border-bottom: 1px solid #1f2633; }
+    header h1 { margin: 0; font-size: 16px; font-weight: 700; letter-spacing: .2px; }
+    header .controls { display:flex; flex-wrap: wrap; align-items: center; gap: 10px; justify-content:flex-end; }
+    select, button, input { background: #0d1117; color: var(--text); border: 1px solid #2b3242; border-radius: 8px; padding: 8px 10px; font-size: 13px; }
+    button.primary { background: linear-gradient(90deg, var(--accent), var(--accent-2)); border: none; }
+    button:disabled { opacity: .6; cursor: not-allowed; }
+    .layout { display: grid; grid-template-columns: 1.25fr .75fr; gap: 8px; padding: 8px; }
+    #mly-wrap { position: relative; }
+    #mly { height: calc(100vh - 160px); border-radius: 10px; overflow: hidden; background:#000; }
+    .overlay-controls { position:absolute; left:10px; top:10px; background:rgba(15,17,21,.7); border:1px solid #2b3242; padding:8px; border-radius:10px; font-size:12px; backdrop-filter: blur(6px); }
+    #map { height: calc(58vh - 160px); border-radius: 10px; overflow: hidden; }
+    .right { display: grid; grid-template-rows: auto auto 1fr auto; gap: 8px; }
+    .panel { background: var(--panel); border: 1px solid #1f2633; border-radius: 10px; padding: 10px; }
+    .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .score { display: flex; gap: 16px; align-items: baseline; margin: 6px 0 12px; }
+    .score .big { font-size: 22px; font-weight: 800; }
+    .score .muted { color: var(--muted); font-size: 12px; }
+    .result { margin-top: 10px; font-size: 14px; line-height: 1.45; }
+    .small { color: var(--muted); font-size: 12px; }
+    .pill { background: #0d1117; border: 1px solid #2b3242; border-radius: 999px; padding: 6px 10px; font-size: 12px;}
+    .hint { color: var(--muted); font-size: 12px; margin-left: 4px; }
+    .kbd { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+    .badge { background: #0d1117; border:1px solid #3b4358; padding:4px 8px; border-radius: 999px; font-size: 11px; color: var(--muted); }
+    .chips { display:flex; gap:6px; flex-wrap:wrap; margin-top:6px; }
+    .chip { background:#0d1117; border:1px solid #3b4358; padding:4px 8px; border-radius:999px; font-size:11px; }
+    .btn-ghost { background:#0d1117; border:1px dashed #3b4358; padding:6px 8px; border-radius:8px; }
+    .grid2 { display:grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap:6px; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>GeoGuessr-like with Mapillary × MapLibre <span class="badge">Detections Overlay + Basemap Switcher</span></h1>
+      <div class="controls">
+        <label>エリア:
+          <select id="regionSelect">
+            <option value="WORLD">World (beta)</option>
+            <option value="EUROPE">Europe</option>
+            <option value="N_AMERICA">North America</option>
+            <option value="JAPAN">Japan</option>
+            <option value="ITALY">Italy</option>
+          </select>
+        </label>
+        <label>ラウンド数:
+          <select id="roundsSelect">
+            <option>5</option><option selected>10</option><option>20</option>
+          </select>
+        </label>
+        <label>出題条件:
+          <select id="filterSelect">
+            <option value="NONE">制限なし</option>
+            <option value="TRAFFIC_SIGN_ANY">交通標識あり（何でも）</option>
+            <option value="TRAFFIC_SIGN_PICK">交通標識（種類を選択）</option>
+          </select>
+        </label>
+        <button id="newGameBtn" class="primary">新しいゲーム</button>
+        <button id="skipBtn">スキップ</button>
+      </div>
+    </header>
+
+    <div class="layout">
+      <div id="mly-wrap">
+        <div id="mly" aria-label="Mapillary JS 360°ビューア"></div>
+        <!-- overlay controls inside viewer -->
+        <div class="overlay-controls">
+          <div><b>検出オーバーレイ</b></div>
+          <label><input type="checkbox" id="showBoxes" checked /> バウンディングボックス</label><br/>
+          <label><input type="checkbox" id="showSeg" checked /> セグメンテーション（ポリゴン）</label><br/>
+          <label><input type="checkbox" id="showLabels" /> ラベル表示</label>
+          <div class="chips">
+            <span class="chip">色: ファミリー別</span>
+            <button id="clearOverlay" class="btn-ghost">一時的に消す</button>
+          </div>
+          <details style="margin-top:6px">
+            <summary style="cursor:pointer">サインピッカー（OR 条件）</summary>
+            <div class="grid2" style="margin-top:6px">
+              <div>
+                <div class="small">ファミリー（prefix一致）</div>
+                <label><input type="checkbox" class="family" value="regulatory--" checked> regulatory--</label><br/>
+                <label><input type="checkbox" class="family" value="warning--" checked> warning--</label><br/>
+                <label><input type="checkbox" class="family" value="information--" checked> information--</label><br/>
+                <label><input type="checkbox" class="family" value="complementary--"> complementary--</label><br/>
+                <label><input type="checkbox" class="family" value="temporary--"> temporary--</label><br/>
+                <label><input type="checkbox" class="family" value="other-sign"> other-sign</label>
+              </div>
+              <div>
+                <div class="small">代表（prefix一致）</div>
+                <label><input type="checkbox" class="type" value="regulatory--stop"> stop</label>
+                <label><input type="checkbox" class="type" value="regulatory--give-way"> give-way</label>
+                <label><input type="checkbox" class="type" value="regulatory--maximum-speed-limit"> speed-limit</label>
+                <label><input type="checkbox" class="type" value="warning--children"> children</label>
+                <label><input type="checkbox" class="type" value="warning--pedestrian-crossing"> pedestrian</label>
+                <label><input type="checkbox" class="type" value="information--parking"> parking</label>
+              </div>
+            </div>
+            <div class="chips">
+              <button id="checkAllFam" class="btn-ghost">ファミリー全選択</button>
+              <button id="clearAllFam" class="btn-ghost">全解除</button>
+              <button id="checkAllType" class="btn-ghost">種別全選択</button>
+              <button id="clearAllType" class="btn-ghost">全解除</button>
+            </div>
+          </details>
+        </div>
+      </div>
+
+      <div class="right">
+        <!-- Basemap switcher -->
+        <div class="panel">
+          <div class="row">
+            <label>地図レイヤ:
+              <select id="basemapSelect">
+                <option value="OSM_STD">OpenStreetMap 標準</option>
+                <option value="ESRI_IMG">Esri 航空写真</option>
+                <option value="OSM_HOT">HOT Humanitarian</option>
+                <option value="MAPTILER_OMT">MapTiler OMT（要キー）</option>
+              </select>
+            </label>
+            <label id="maptilerKeyWrap" style="display:none">MapTiler API Key: <input id="maptilerKey" size="18" placeholder="YOUR_KEY" /></label>
+          </div>
+          <div id="map" aria-label="MapLibre GL JS 地図（推測用）"></div>
+          <div class="row" style="margin-top:8px">
+            <button id="submitBtn" class="primary">この場所に決定</button>
+            <button id="clearBtn">ピンをクリア</button>
+            <span class="hint">地図をクリックでピンを置く → 決定</span>
+          </div>
+        </div>
+
+        <!-- Score -->
+        <div class="panel">
+          <div class="score">
+            <div>Round <span id="roundNum">0</span>/<span id="roundMax">0</span></div>
+            <div class="big"><span id="score">0</span> pts</div>
+            <div class="muted">累計</div>
+            <span id="lastDistance" class="pill">—</span>
+          </div>
+          <div class="result" id="result">360°パノラマを見て場所を推測してください。</div>
+          <div class="small" style="margin-top:10px">
+            ヒント: <span class="kbd">Shift</span>＋ドラッグで視点のパン / ホイールでズーム
+          </div>
+          <div class="small" id="detSummary" style="margin-top:8px; opacity:.85"></div>
+        </div>
+
+        <div class="panel">
+          <div class="small">
+            Mapillary API（Graph v4）の <span class="kbd">/images</span>, <span class="kbd">/{image_id}/detections</span> を使用。<br/>
+            オーバーレイは MapillaryJS の <span class="kbd">TagComponent</span>（Polygon/Rect）で描画します。<br/>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 1) 自分の Mapillary Access Token を入れてください
+    //const MAPILLARY_TOKEN = "MLY|PUT_YOUR_TOKEN_HERE";
+    const MAPILLARY_TOKEN = "MLY|24235641766046915|000d3d2e3e39d1df6841a80d7d647f4d";
+
+    // 2) 出題エリア
+    const REGION_BOXES = {
+      WORLD: {latMin: -58, latMax: 75, lonMin: -180, lonMax: 180, sizeDeg: 0.6},
+      EUROPE: {latMin: 35, latMax: 71, lonMin: -11, lonMax: 30, sizeDeg: 0.6},
+      N_AMERICA: {latMin: 14, latMax: 72, lonMin: -168, lonMax: -52, sizeDeg: 0.8},
+      JAPAN: {latMin: 24, latMax: 46, lonMin: 122, lonMax: 146, sizeDeg: 0.35},
+      ITALY: {latMin: 36.5, latMax: 47.5, lonMin: 6.5, lonMax: 18.8, sizeDeg: 0.35},
+    };
+    const MAX_FETCH_TRIES = 45;
+    const MAX_PER_BBOX_CANDIDATES = 18;
+
+    // 3) 状態
+    let map, viewer, tagComponent;
+    let currentTruth = null;   // {lng, lat, imageId}
+    let currentDetections = []; // [{id,value,geometry}]（geometry は画像座標）
+    let imgMeta = { width: null, height: null };
+    let guessMarker = null;
+    let truthMarker = null;
+    const lineId = "guess-line";
+    let score = 0;
+    let round = 0;
+    let maxRounds = 10;
+
+    // ---- Basemap styles ----
+    function rasterStyle(tiles, attribution) {
+      return {
+        "version": 8,
+        "sources": {
+          "base": { "type": "raster", "tiles": Array.isArray(tiles) ? tiles : [tiles], "tileSize": 256, "attribution": attribution }
+        },
+        "layers": [{ "id": "base", "type": "raster", "source": "base" }]
+      };
+    }
+    const STYLES = {
+      OSM_STD: rasterStyle("https://tile.openstreetmap.org/{z}/{x}/{y}.png", "© OpenStreetMap contributors"),
+      ESRI_IMG: rasterStyle("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", "Sources: Esri, Maxar, Earthstar Geographics, and the GIS User Community"),
+      OSM_HOT: rasterStyle(["https://a.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png","https://b.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png","https://c.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png"], "© OpenStreetMap contributors, Tiles style by HOT"),
+    };
+
+    function setBasemap(mode) {
+      if (mode === "MAPTILER_OMT") {
+        const key = (document.getElementById("maptilerKey").value || "").trim();
+        if (!key) { alert("MapTiler の API Key を入力してください。"); document.getElementById("basemapSelect").value = "OSM_STD"; return setBasemap("OSM_STD"); }
+        const styleUrl = `https://api.maptiler.com/maps/streets-v2/style.json?key=${key}`;
+        map.setStyle(styleUrl);
+      } else {
+        map.setStyle(STYLES[mode]);
+      }
+      // スタイル切替後にラインレイヤを復元
+      map.once("styledata", () => { restoreGuessLine(); });
+    }
+
+    function initMap() {
+      map = new maplibregl.Map({
+        container: "map",
+        style: STYLES.OSM_STD,
+        center: [12, 20],
+        zoom: 1.6,
+        attributionControl: true,
+      });
+      map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }));
+      map.on("click", (e) => setGuess([e.lngLat.lng, e.lngLat.lat]));
+
+      // Basemap UI
+      const basemapSelect = document.getElementById("basemapSelect");
+      const keyWrap = document.getElementById("maptilerKeyWrap");
+      basemapSelect.addEventListener("change", (e) => {
+        keyWrap.style.display = e.target.value === "MAPTILER_OMT" ? "inline-flex" : "none";
+        setBasemap(e.target.value);
+      });
+      document.getElementById("maptilerKey").addEventListener("change", () => {
+        if (basemapSelect.value === "MAPTILER_OMT") setBasemap("MAPTILER_OMT");
+      });
+    }
+
+    function initViewer(imageId) {
+      const { Viewer } = mapillary;
+      if (viewer) {
+        viewer.moveTo(imageId).catch(console.error).then(() => { setupTagComponent(); renderDetectionsOverlay(); });
+        return;
+      }
+      viewer = new Viewer({
+        accessToken: MAPILLARY_TOKEN,
+        container: "mly",
+        imageId,
+        component: { tag: true, cover: false },
+      });
+      viewer.on("image", () => { /* 画像切り替え時にタグをクリア（本ゲームでは毎ラウンド固定） */ });
+      setupTagComponent();
+      renderDetectionsOverlay();
+    }
+
+    function setupTagComponent() {
+      tagComponent = viewer.getComponent("tag");
+      if (!tagComponent) return;
+      tagComponent.configure({}); // default
+      tagComponent.removeAll();
+    }
+
+    // ---- 検出フィルタ関連 ----
+    function getFilterMode() { return document.getElementById("filterSelect").value; }
+    function getSelectedFamilies() { return Array.from(document.querySelectorAll(".family:checked")).map(el => el.value); }
+    function getSelectedTypes() { return Array.from(document.querySelectorAll(".type:checked")).map(el => el.value); }
+    function getActiveTokens() { return [...getSelectedFamilies(), ...getSelectedTypes()]; }
+    function detectionMatches(values, mode) {
+      if (mode === "NONE") return true;
+      if (!values || values.length === 0) return false;
+      if (mode === "TRAFFIC_SIGN_ANY") {
+        const prefixes = ["regulatory--", "warning--", "information--", "complementary--", "temporary--", "other-sign"];
+        return values.some(v => prefixes.some(p => v.startsWith(p)));
+      }
+      if (mode === "TRAFFIC_SIGN_PICK") {
+        const tokens = getActiveTokens();
+        if (tokens.length === 0) return false;
+        return values.some(v => tokens.some(t => v.startsWith(t)));
+      }
+      return true;
+    }
+
+    async function fetchImageMeta(imageId) {
+      const url = new URL(`https://graph.mapillary.com/${imageId}`);
+      url.searchParams.set("access_token", MAPILLARY_TOKEN);
+      url.searchParams.set("fields", "id,width,height");
+      const res = await fetch(url.toString());
+      if (!res.ok) throw new Error("image meta API error " + res.status);
+      const json = await res.json();
+      return { width: json.width || null, height: json.height || null };
+    }
+
+    async function fetchDetections(imageId) {
+      const url = new URL(`https://graph.mapillary.com/${imageId}/detections`);
+      url.searchParams.set("access_token", MAPILLARY_TOKEN);
+      url.searchParams.set("fields", "id,value,geometry");
+      url.searchParams.set("limit", "500");
+      const res = await fetch(url.toString());
+      if (!res.ok) throw new Error("detections API error " + res.status);
+      const json = await res.json();
+      return (json && json.data ? json.data : []).filter(d => d && d.value);
+    }
+
+    function normalizePoly(poly, meta) {
+      // poly: [[x,y], ...] in either pixels or [0..1]
+      const w = meta.width || 1, h = meta.height || 1;
+      return poly.map(([x,y]) => {
+        const nx = (x > 1 || y > 1) ? (x / w) : x;
+        const ny = (x > 1 || y > 1) ? (y / h) : y;
+        return [nx, ny];
+      });
+    }
+
+    function bboxOfPoly(poly) {
+      let minX=Infinity, minY=Infinity, maxX=-Infinity, maxY=-Infinity;
+      for (const [x,y] of poly) { if (x<minX) minX=x; if (y<minY) minY=y; if (x>maxX) maxX=x; if (y>maxY) maxY=y; }
+      return [minX, minY, maxX, maxY];
+    }
+
+    function familyOfValue(v) {
+      if (v.startsWith("regulatory--")) return "reg";
+      if (v.startsWith("warning--")) return "war";
+      if (v.startsWith("information--")) return "inf";
+      if (v.startsWith("complementary--")) return "com";
+      if (v.startsWith("temporary--")) return "tmp";
+      return "oth";
+    }
+    function colorForFamilyCode(code) {
+      // 0xRRGGBB
+      switch(code){
+        case "reg": return 0xff5555; // red-ish
+        case "war": return 0xffc107; // amber
+        case "inf": return 0x4e7df2; // blue-ish
+        case "com": return 0x8bc34a; // green-ish
+        case "tmp": return 0xff9800; // orange
+        default: return 0xffffff;
+      }
+    }
+
+    function renderDetectionsOverlay() {
+      if (!tagComponent) return;
+      tagComponent.removeAll();
+      const showBoxes = document.getElementById("showBoxes").checked;
+      const showSeg = document.getElementById("showSeg").checked;
+      const showLabels = document.getElementById("showLabels").checked;
+
+      const comp = mapillary.component;
+      const added = [];
+      for (const d of currentDetections) {
+        if (!d.geometry || !d.geometry.coordinates) continue;
+        let rings = [];
+        if (d.geometry.type === "Polygon") {
+          rings = d.geometry.coordinates; // [[[x,y],...]]
+        } else if (d.geometry.type === "MultiPolygon") {
+          rings = d.geometry.coordinates[0] || [];
+        } else {
+          continue;
+        }
+        if (!rings.length) continue;
+
+        const poly = normalizePoly(rings[0], imgMeta);
+        if (poly.length < 3) continue;
+
+        const fam = familyOfValue(d.value);
+        const color = colorForFamilyCode(fam);
+
+        if (showSeg) {
+          const geom = new comp.PolygonGeometry(closePoly(poly));
+          const tag = new comp.OutlineTag(`seg-${d.id}`, geom, {
+            editable: false, lineColor: color, lineWidth: 2, lineOpacity: 0.9,
+            fillColor: color, fillOpacity: 0.18, text: showLabels ? d.value : ""
+          });
+          added.push(tag);
+        }
+        if (showBoxes) {
+          const [x1,y1,x2,y2] = bboxOfPoly(poly);
+          const rect = new comp.RectGeometry([x1,y1,x2,y2]);
+          const rTag = new comp.OutlineTag(`box-${d.id}`, rect, {
+            editable: false, lineColor: color, lineWidth: 2, lineOpacity: 1.0,
+            fillOpacity: 0, text: showLabels ? d.value : ""
+          });
+          added.push(rTag);
+        }
+      }
+      if (added.length) tagComponent.add(added);
+    }
+
+    function closePoly(poly) {
+      const n = poly.length;
+      if (n < 2) return poly;
+      const [x0,y0] = poly[0], [xn,yn] = poly[n-1];
+      if (x0 === xn && y0 === yn) return poly;
+      return [...poly, [x0,y0]];
+    }
+
+    // ---- 画像ピック（フィルタ + 検出/メタ取得 + オーバーレイ） ----
+    async function pickRandomPano(regionKey) {
+      const r = REGION_BOXES[regionKey] || REGION_BOXES.WORLD;
+      const size = r.sizeDeg;
+      const mode = getFilterMode();
+
+      for (let attempt = 1; attempt <= MAX_FETCH_TRIES; attempt++) {
+        const lon = randBetween(r.lonMin, r.lonMax);
+        const lat = randBetween(r.latMin, r.latMax);
+        const bbox = [lon - size / 2, lat - size / 2, lon + size / 2, lat + size / 2];
+
+        const url = new URL("https://graph.mapillary.com/images");
+        const params = {
+          access_token: MAPILLARY_TOKEN,
+          fields: "id,computed_geometry",
+          is_pano: true,
+          limit: 25,
+          bbox: bbox.join(","),
+        };
+        Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
+
+        try {
+          const res = await fetch(url.toString());
+          if (!res.ok) throw new Error("API error " + res.status);
+          const json = await res.json();
+          const arr = json && json.data ? json.data.slice() : [];
+
+          shuffle(arr);
+          const maxN = Math.min(arr.length, MAX_PER_BBOX_CANDIDATES);
+
+          for (let i = 0; i < maxN; i++) {
+            const it = arr[i];
+            if (!it || !it.computed_geometry || !it.computed_geometry.coordinates) continue;
+            const [lng, lat] = it.computed_geometry.coordinates;
+
+            // detections & meta
+            try {
+              const [dets, meta] = await Promise.all([fetchDetections(it.id), fetchImageMeta(it.id)]);
+              const values = dets.map(d => d.value);
+              if (detectionMatches(values, mode)) {
+                return { imageId: it.id, lng, lat, dets, meta };
+              }
+            } catch (e) { console.warn("detections/meta fetch failed", e); }
+          }
+        } catch (err) {
+          console.warn("Fetch attempt failed", attempt, err);
+        }
+      }
+      throw new Error("条件に合う候補が見つかりませんでした。出題条件やエリアを変更して再試行してください。");
+    }
+
+    // 7) ゲーム進行
+    function resetRoundUI() {
+      if (map && map.getSource(lineId)) { map.removeLayer(lineId); map.removeSource(lineId); }
+      if (truthMarker) { truthMarker.remove(); truthMarker = null; }
+      if (guessMarker) { guessMarker.remove(); guessMarker = null; }
+      document.getElementById("lastDistance").textContent = "—";
+      document.getElementById("result").textContent = "360°パノラマを見て場所を推測してください。";
+      document.getElementById("detSummary").textContent = "";
+      if (tagComponent) tagComponent.removeAll();
+    }
+
+    async function nextRound() {
+      resetRoundUI();
+      round += 1;
+      updateRoundInfo();
+      setButtonsBusy(true);
+
+      try {
+        const region = document.getElementById("regionSelect").value;
+        const pano = await pickRandomPano(region);
+        currentTruth = { lng: pano.lng, lat: pano.lat, imageId: pano.imageId };
+        currentDetections = pano.dets || [];
+        imgMeta = pano.meta || { width: null, height: null };
+
+        initViewer(pano.imageId);
+
+        // 検出要約表示
+        const uniq = uniqueTopN(currentDetections.map(d => d.value), 10);
+        if (uniq.length) {
+          document.getElementById("detSummary").innerHTML =
+            `この画像に検出: <span class="kbd">${uniq.join("</span>, <span class='kbd'>")}</span> など`;
+        } else if (getFilterMode() !== "NONE") {
+          document.getElementById("detSummary").textContent = "検出: 0（近隣候補リトライ済み）";
+        }
+
+        // オーバーレイ描画
+        renderDetectionsOverlay();
+      } catch (err) {
+        round -= 1;
+        updateRoundInfo();
+        alert("画像の取得に失敗しました: " + err.message);
+      } finally {
+        setButtonsBusy(false);
+      }
+    }
+
+    function updateRoundInfo() {
+      document.getElementById("roundNum").textContent = String(round);
+      document.getElementById("roundMax").textContent = String(maxRounds);
+      document.getElementById("score").textContent = String(score);
+    }
+
+    function setButtonsBusy(b) {
+      document.getElementById("submitBtn").disabled = b;
+      document.getElementById("skipBtn").disabled = b;
+      document.getElementById("newGameBtn").disabled = b;
+      document.getElementById("clearBtn").disabled = b;
+      document.getElementById("filterSelect").disabled = b;
+      document.getElementById("regionSelect").disabled = b;
+      document.getElementById("roundsSelect").disabled = b;
+      document.querySelectorAll(".overlay-controls input, .overlay-controls button").forEach(el => el.disabled = b);
+    }
+
+    function setGuess(lngLat) {
+      if (guessMarker) guessMarker.remove();
+      guessMarker = new maplibregl.Marker({ draggable: true }).setLngLat(lngLat).addTo(map);
+      map.easeTo({ center: lngLat, zoom: Math.max(map.getZoom(), 2.5) });
+    }
+    function addTruthMarker() {
+      truthMarker = new maplibregl.Marker({ color: "#00b3a4" }).setLngLat([currentTruth.lng, currentTruth.lat]).addTo(map);
+    }
+    function drawLine(guess, truth) {
+      const line = {"type":"FeatureCollection","features":[{"type":"Feature","geometry":{"type":"LineString","coordinates":[guess,truth]},"properties":{}}]};
+      if (map.getSource(lineId)) { map.getSource(lineId).setData(line); }
+      else { map.addSource(lineId, { type: "geojson", data: line }); map.addLayer({ id: lineId, type: "line", source: lineId, paint: { "line-width": 3 } }); }
+    }
+    function restoreGuessLine() {
+      if (!map || !guessMarker || !truthMarker) return;
+      const g = guessMarker.getLngLat();
+      drawLine([g.lng, g.lat], [currentTruth.lng, currentTruth.lat]);
+    }
+    function calcScore(distanceKm) { return Math.round(5000 / (1 + distanceKm / 250)); }
+    function endOrContinue() { if (round >= maxRounds) alert(`ゲーム終了！ 総合スコア: ${score} 点`); else nextRound(); }
+
+    async function onSubmit() {
+      if (!currentTruth || !guessMarker) { alert("地図上に推測ピンを置いてください。"); return; }
+      setButtonsBusy(true);
+      try {
+        const guess = guessMarker.getLngLat();
+        const truth = [currentTruth.lng, currentTruth.lat];
+        const distanceKm = turf.distance(turf.point([guess.lng, guess.lat]), turf.point(truth), { units: "kilometers" });
+        const pts = calcScore(distanceKm);
+        score += pts;
+        document.getElementById("lastDistance").textContent = distanceKm.toFixed(1) + " km";
+        document.getElementById("score").textContent = String(score);
+        document.getElementById("result").innerHTML =
+          `正解は <b>${truth[1].toFixed(5)}, ${truth[0].toFixed(5)}</b>。<br/>
+           推測との差は <b>${distanceKm.toFixed(1)} km</b>、このラウンドの得点は <b>${pts} 点</b>。`;
+        addTruthMarker();
+        drawLine([guess.lng, guess.lat], truth);
+        const bounds = new maplibregl.LngLatBounds();
+        bounds.extend([guess.lng, guess.lat]); bounds.extend(truth);
+        map.fitBounds(bounds, { padding: 50, duration: 1000 });
+        setTimeout(endOrContinue, 1200);
+      } catch (err) { alert("判定に失敗しました: " + err.message); }
+      finally { setButtonsBusy(false); }
+    }
+
+    // ---- ユーティリティ ----
+    function randBetween(min, max) { return min + Math.random() * (max - min); }
+    function shuffle(a) { for (let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; }
+    function uniqueTopN(values, n) { const m=new Map(); for (const v of values) m.set(v,(m.get(v)||0)+1); return [...m.entries()].sort((a,b)=>b[1]-a[1]).slice(0,n).map(([k])=>k); }
+
+    // ---- イベント ----
+    window.addEventListener("DOMContentLoaded", () => {
+      initMap();
+
+      document.getElementById("submitBtn").addEventListener("click", onSubmit);
+      document.getElementById("clearBtn").addEventListener("click", () => { if (guessMarker) { guessMarker.remove(); guessMarker = null; } });
+      document.getElementById("skipBtn").addEventListener("click", () => nextRound());
+      document.getElementById("newGameBtn").addEventListener("click", () => {
+        score = 0; round = 0; maxRounds = parseInt(document.getElementById("roundsSelect").value, 10) || 10;
+        updateRoundInfo(); nextRound();
+      });
+
+      // Overlay toggles
+      ["showBoxes","showSeg","showLabels"].forEach(id => document.getElementById(id).addEventListener("change", renderDetectionsOverlay));
+      document.getElementById("clearOverlay").addEventListener("click", () => { if (tagComponent) tagComponent.removeAll(); });
+
+      // Sign picker helpers
+      document.getElementById("checkAllFam").addEventListener("click", () => { document.querySelectorAll(".family").forEach(el => el.checked = true); });
+      document.getElementById("clearAllFam").addEventListener("click", () => { document.querySelectorAll(".family").forEach(el => el.checked = false); });
+      document.getElementById("checkAllType").addEventListener("click", () => { document.querySelectorAll(".type").forEach(el => el.checked = true); });
+      document.getElementById("clearAllType").addEventListener("click", () => { document.querySelectorAll(".type").forEach(el => el.checked = false); });
+
+      // 画像切替時の再描画に備え、値の変更で次ラウンドに反映するよう案内（即時適用は次ラウンドから）
+
+      // 自動開始
+      document.getElementById("newGameBtn").click();
+    });
+  </script>
+</body>
+</html>
