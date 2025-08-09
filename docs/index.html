@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>MapiGuesser</title>
+  <title>MapiGuesser BETA</title>
 
   <!-- MapLibre GL JS -->
   <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.6.2/dist/maplibre-gl.css" />
@@ -25,7 +25,7 @@
       font-family: system-ui, -apple-system, Segoe UI, Roboto, Noto Sans, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji"; }
     .app { display: grid; grid-template-rows: auto 1fr; height: 100%; gap: 8px; }
     header { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 12px; padding: 10px 14px; background: var(--panel); border-bottom: 1px solid #1f2633; }
-    header h1 { margin: 0; font-size: 16px; font-weight: 700; letter-spacing: .2px; }
+    header h1 { margin: 0; font-size: 16px; font-weight: 800; letter-spacing: .2px; }
     header .controls { display:flex; flex-wrap: wrap; align-items: center; gap: 10px; justify-content:flex-end; }
     select, button, input { background: #0d1117; color: var(--text); border: 1px solid #2b3242; border-radius: 8px; padding: 8px 10px; font-size: 13px; }
     button.primary { background: linear-gradient(90deg, var(--accent), var(--accent-2)); border: none; }
@@ -52,8 +52,6 @@
     .checkbox { display:flex; align-items:center; gap:6px; font-size:13px; padding:4px 6px; border-radius:8px; }
     .checkbox:hover { background:#0d1117; }
     .chips { display:flex; gap:6px; flex-wrap:wrap; margin-top:6px; }
-
-    /* Dialog */
     dialog {
       border: 1px solid #2b3242; background: #111521; color: var(--text);
       border-radius: 12px; padding: 16px 18px; max-width: 560px;
@@ -68,10 +66,11 @@
 <body>
   <div class="app">
     <header>
-      <h1>MapiGuesser powered by mapconcierge<span class="badge">v0.5.1</span></h1>
+      <h1>MapiGuesser BETA<span style="font-weight:600"></span> <span class="badge" id="verBadge"></span></h1>
       <div class="controls">
         <label>Region:
           <select id="regionSelect">
+            <!-- Order: World, Asia, Oceania, Europe, Africa, North America, Latin America, Japan, Tokyo, Italy, Milan, Como, Venice, Amsterdam, Berlin -->
             <option value="WORLD">World (beta)</option>
             <option value="ASIA">Asia</option>
             <option value="OCEANIA">Oceania</option>
@@ -84,6 +83,9 @@
             <option value="ITALY">Italy</option>
             <option value="MILANO">Milan (Italy)</option>
             <option value="COMO">Como (Italy)</option>
+            <option value="VENEZIA">Venice (Italy)</option>
+            <option value="AMSTERDAM">Amsterdam (Netherlands)</option>
+            <option value="BERLIN">Berlin (Germany)</option>
           </select>
         </label>
         <label>Rounds:
@@ -194,30 +196,44 @@
   </dialog>
 
   <script>
-    // 1) Put your Mapillary Access Token here
-    //const MAPILLARY_TOKEN = "MLY|PUT_YOUR_TOKEN_HERE";
-    const MAPILLARY_TOKEN = "MLY|24235641766046915|000d3d2e3e39d1df6841a80d7d647f4d";
+    // ===== Version badge =====
+    const VERSION = "v0.6.1";
+    window.addEventListener("DOMContentLoaded", () => {
+      const el = document.getElementById("verBadge");
+      if (el && VERSION) el.textContent = VERSION;
+    });
 
-    // 2) Regions
+    // ===== Mapillary Access Token =====
+    // Put your Mapillary access token here OR pass via URL: ?token=MLY|...
+    //let MAPILLARY_TOKEN = "MLY|PUT_YOUR_TOKEN_HERE";
+    let MAPILLARY_TOKEN = "MLY|24235641766046915|000d3d2e3e39d1df6841a80d7d647f4d";
+
+    const _sp = new URLSearchParams(location.search);
+    const _spToken = _sp.get("token");
+    if (_spToken && _spToken.startsWith("MLY|")) MAPILLARY_TOKEN = _spToken;
+
+    // ===== Regions (keys must match the select options' values) =====
     const REGION_BOXES = {
-      WORLD:   {latMin: -58, latMax: 75, lonMin: -180, lonMax: 180, sizeDeg: 0.6},
-      EUROPE:  {latMin: 35,  latMax: 71, lonMin: -11,  lonMax: 30,  sizeDeg: 0.6},
-      N_AMERICA:{latMin: 14, latMax: 72, lonMin: -168, lonMax: -52, sizeDeg: 0.8},
+      WORLD:   {latMin: -85, latMax: 85, lonMin: -180, lonMax: 180, sizeDeg: 0.6},
       ASIA:    {latMin: -10, latMax: 77, lonMin: 26,   lonMax: 180, sizeDeg: 0.7},
-      AFRICA:  {latMin: -35, latMax: 38, lonMin: -19,  lonMax: 52,  sizeDeg: 0.7},
-      LATAM:   {latMin: -56, latMax: 33, lonMin: -118, lonMax: -34, sizeDeg: 0.8},
       OCEANIA: {latMin: -50, latMax: 15, lonMin: 110,  lonMax: 180, sizeDeg: 0.8},
+      EUROPE:  {latMin: 35,  latMax: 71, lonMin: -11,  lonMax: 30,  sizeDeg: 0.6},
+      AFRICA:  {latMin: -35, latMax: 38, lonMin: -19,  lonMax: 52,  sizeDeg: 0.7},
+      N_AMERICA:{latMin: 14, latMax: 72, lonMin: -168, lonMax: -52, sizeDeg: 0.8},
+      LATAM:   {latMin: -56, latMax: 33, lonMin: -118, lonMax: -34, sizeDeg: 0.8},
       JAPAN:   {latMin: 24,  latMax: 46, lonMin: 122,  lonMax: 146, sizeDeg: 0.35},
-      ITALY:   {latMin: 36.5,latMax: 47.5,lonMin: 6.5, lonMax: 18.8, sizeDeg: 0.35},
-      // City boxes
-      MILANO:  {latMin: 45.445, latMax: 45.490, lonMin: 9.170, lonMax: 9.220, sizeDeg: 0.020},
-      COMO:    {latMin: 45.788, latMax: 45.823, lonMin: 9.060, lonMax: 9.112, sizeDeg: 0.025},
       TOKYO:   {latMin: 35.600, latMax: 35.740, lonMin: 139.650, lonMax: 139.840, sizeDeg: 0.060},
+      ITALY:   {latMin: 36.5,latMax: 47.5,lonMin: 6.5, lonMax: 18.8, sizeDeg: 0.35},
+      MILANO:  {latMin: 45.424, latMax: 45.513, lonMin: 9.100, lonMax: 9.280, sizeDeg: 0.020},
+      COMO:    {latMin: 45.788, latMax: 45.823, lonMin: 9.060, lonMax: 9.112, sizeDeg: 0.025},
+      VENEZIA: {latMin: 45.420, latMax: 45.450, lonMin: 12.300, lonMax: 12.370, sizeDeg: 0.020},
+      AMSTERDAM:{latMin: 52.350, latMax: 52.390, lonMin: 4.840, lonMax: 4.960, sizeDeg: 0.030},
+      BERLIN:  {latMin: 52.490, latMax: 52.540, lonMin: 13.350, lonMax: 13.470, sizeDeg: 0.035},
     };
     const MAX_FETCH_TRIES = 60;
     const MAX_PER_BBOX_CANDIDATES = 18;
 
-    // 3) State
+    // ===== State =====
     let map, viewer;
     let currentTruth = null;   // {lng, lat, imageId}
     let guessMarker = null;
@@ -266,7 +282,6 @@
       });
       map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }));
       map.on("click", (e) => setGuess([e.lngLat.lng, e.lngLat.lat]));
-
       document.getElementById("basemapSelect").addEventListener("change", (e) => setBasemap(e.target.value));
     }
 
@@ -276,7 +291,7 @@
       viewer = new Viewer({ accessToken: MAPILLARY_TOKEN, container: "mly", imageId, component: { cover: false } });
     }
 
-    // ---- Detection filter ----
+    // ---- Detection filter (values only; no overlays) ----
     function getFilterMode() { return document.getElementById("filterSelect").value; }
     function getSelectedFamilies() { return Array.from(document.querySelectorAll(".family:checked")).map(el => el.value); }
     function getSelectedTypes() { return Array.from(document.querySelectorAll(".type:checked")).map(el => el.value); }
@@ -307,7 +322,7 @@
       return (json && json.data ? json.data : []).map(d => d.value).filter(Boolean);
     }
 
-    // ---- Random pano picker (with optional detection filter) ----
+    // ---- Random pano picker (Region mode only) ----
     async function pickRandomPano(regionKey) {
       const r = REGION_BOXES[regionKey] || REGION_BOXES.WORLD;
       const size = r.sizeDeg;
@@ -466,7 +481,7 @@
       ];
     }
 
-    function asFeatureCollection(features, name="mly-geoguessr-answers") {
+    function asFeatureCollection(features, name="mapiguesser-answers") {
       return { "type": "FeatureCollection", "name": name, "features": features };
     }
 
@@ -503,9 +518,9 @@
         alert("No rounds to export yet. Please judge a round first.");
         return;
       }
-      const fc = asFeatureCollection(allFeatures, "mly-geoguessr-all-answers");
+      const fc = asFeatureCollection(allFeatures, "mapiguesser-all-answers");
       const ts = new Date().toISOString().replace(/[:T]/g,'-').slice(0,19);
-      const fname = `mly-all-answers-${gameId || "session"}-${ts}.geojson`;
+      const fname = `mapiguesser-all-answers-${gameId || "session"}-${ts}.geojson`;
       downloadBlob(fc, fname);
     }
 
@@ -556,11 +571,11 @@
         allFeatures.push(...feats);
 
         // Per-round download dialog
-        const roundFC = asFeatureCollection(feats, `mly-answer-round${roundNum}`);
+        const roundFC = asFeatureCollection(feats, `mapiguesser-answer-round${roundNum}`);
         const msg = `Correct location was <b>${truth[1].toFixed(5)}, ${truth[0].toFixed(5)}</b>.<br/>`
           + `Distance from your answer was <b>${distanceKm.toFixed(1)} km</b>!`;
         const ts = new Date().toISOString().replace(/[:T]/g,'-').slice(0,19);
-        const fname = `mly-answer-round${roundNum}-${ts}.geojson`;
+        const fname = `mapiguesser-answer-round${roundNum}-${ts}.geojson`;
         openResultDialog(msg, roundFC, fname);
 
       } catch (err) {
@@ -570,14 +585,17 @@
       }
     }
 
-    // ---- URL param to set default region (?region=ASIA or ?r=tokyo) ----
+    // ---- URL param to set default region (?region=ASIA or ?r=venezia etc.) ----
     function applyInitialRegionFromURL() {
       const sp = new URLSearchParams(location.search);
       let r = sp.get("region") || sp.get("r");
       if (!r) return;
       r = r.trim().toUpperCase().replace(/[^A-Z_]/g, "");
+      // Normalize aliases
       if (r === "LATINAMERICA" || r === "LATIN_AMERICA" || r === "LATIN" || r === "LATINAM" ) r = "LATAM";
       if (r === "OCEANEA") r = "OCEANIA";
+      if (r === "MILAN") r = "MILANO";
+      if (r === "VENICE" || r === "VENEZIA") r = "VENEZIA";
       if (REGION_BOXES[r]) {
         const sel = document.getElementById("regionSelect");
         sel.value = r;
@@ -600,7 +618,6 @@
       document.getElementById("newGameBtn").addEventListener("click", () => {
         score = 0; round = 0; maxRounds = parseInt(document.getElementById("roundsSelect").value, 10) || 10;
         updateRoundInfo();
-        // New game: clear accumulation and create new gameId
         allFeatures = [];
         gameId = makeGameId();
         gameStartISO = new Date().toISOString();
