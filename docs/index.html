@@ -66,11 +66,10 @@
 <body>
   <div class="app">
     <header>
-      <h1>MapiGuesser BETA<span style="font-weight:600"></span> <span class="badge" id="verBadge"></span></h1>
+      <h1>MapiGuesser BETA <span class="badge" id="verBadge"></span></h1>
       <div class="controls">
         <label>Region:
           <select id="regionSelect">
-            <!-- Order: World, Asia, Oceania, Europe, Africa, North America, Latin America, Japan, Tokyo, Italy, Milan, Como, Venice, Amsterdam, Berlin -->
             <option value="WORLD">World (beta)</option>
             <option value="ASIA">Asia</option>
             <option value="OCEANIA">Oceania</option>
@@ -111,7 +110,6 @@
       <div id="mly" aria-label="Mapillary JS 360° viewer"></div>
 
       <div class="right">
-        <!-- Sign Picker -->
         <div class="panel" id="signPickerPanel" style="display:none">
           <div class="legend">Pick traffic sign types (OR condition)</div>
           <div class="grid2">
@@ -141,7 +139,6 @@
           </div>
         </div>
 
-        <!-- Basemap switcher + Map -->
         <div class="panel">
           <div class="row">
             <label>Basemap:
@@ -160,7 +157,6 @@
           </div>
         </div>
 
-        <!-- Score -->
         <div class="panel">
           <div class="score">
             <div>Round <span id="roundNum">0</span>/<span id="roundMax">0</span></div>
@@ -184,7 +180,6 @@
     </div>
   </div>
 
-  <!-- Result dialog -->
   <dialog id="resultDialog">
     <h3 class="dialog-title">Result</h3>
     <div class="dialog-msg" id="dialogMsg"></div>
@@ -196,23 +191,19 @@
   </dialog>
 
   <script>
-    // ===== Version badge =====
-    const VERSION = "v0.6.2";
+    const VERSION = "v0.7.0";
     window.addEventListener("DOMContentLoaded", () => {
       const el = document.getElementById("verBadge");
       if (el && VERSION) el.textContent = VERSION;
     });
 
-    // ===== Mapillary Access Token =====
-    // Put your Mapillary access token here OR pass via URL: ?token=MLY|...
+    // Keep user's token default, but allow override via ?token=MLY|...
     //let MAPILLARY_TOKEN = "MLY|PUT_YOUR_TOKEN_HERE";
     let MAPILLARY_TOKEN = "MLY|24235641766046915|000d3d2e3e39d1df6841a80d7d647f4d";
-
     const _sp = new URLSearchParams(location.search);
     const _spToken = _sp.get("token");
     if (_spToken && _spToken.startsWith("MLY|")) MAPILLARY_TOKEN = _spToken;
 
-    // ===== Regions (keys must match the select options' values) =====
     const REGION_BOXES = {
       WORLD:   {latMin: -85, latMax: 85, lonMin: -180, lonMax: 180, sizeDeg: 0.6},
       ASIA:    {latMin: -10, latMax: 77, lonMin: 26,   lonMax: 180, sizeDeg: 0.7},
@@ -233,9 +224,8 @@
     const MAX_FETCH_TRIES = 60;
     const MAX_PER_BBOX_CANDIDATES = 18;
 
-    // ===== State =====
     let map, viewer;
-    let currentTruth = null;   // {lng, lat, imageId}
+    let currentTruth = null;
     let guessMarker = null;
     let truthMarker = null;
     const lineId = "guess-line";
@@ -245,12 +235,10 @@
     let lastGeoJSON = null;
     let lastFilename = null;
 
-    // --- Accumulate all-round results ---
     let allFeatures = [];
     let gameId = null;
     let gameStartISO = null;
 
-    // ---- Basemap styles (raster only) ----
     function rasterStyle(tiles, attribution) {
       return {
         "version": 8,
@@ -268,7 +256,6 @@
 
     function setBasemap(mode) {
       map.setStyle(STYLES[mode] || STYLES.OSM_STD);
-      // Restore line after style switch
       map.once("styledata", () => { restoreGuessLine(); });
     }
 
@@ -291,7 +278,6 @@
       viewer = new Viewer({ accessToken: MAPILLARY_TOKEN, container: "mly", imageId, component: { cover: false } });
     }
 
-    // ---- Detection filter (values only; no overlays) ----
     function getFilterMode() { return document.getElementById("filterSelect").value; }
     function getSelectedFamilies() { return Array.from(document.querySelectorAll(".family:checked")).map(el => el.value); }
     function getSelectedTypes() { return Array.from(document.querySelectorAll(".type:checked")).map(el => el.value); }
@@ -322,7 +308,6 @@
       return (json && json.data ? json.data : []).map(d => d.value).filter(Boolean);
     }
 
-    // ---- Random pano picker (Region mode only) ----
     async function pickRandomPano(regionKey) {
       const r = REGION_BOXES[regionKey] || REGION_BOXES.WORLD;
       const size = r.sizeDeg;
@@ -377,7 +362,22 @@
       throw new Error("No candidates matched the conditions. Change the filter/area and try again.");
     }
 
-    // ---- Game flow ----
+    // ------- NEW: zoom map to region bbox -------
+    function fitMapToRegion(regionKey) {
+      if (!map) return;
+      const r = REGION_BOXES[regionKey];
+      if (!r) return;
+      const bounds = new maplibregl.LngLatBounds(
+        [r.lonMin, r.latMin],
+        [r.lonMax, r.latMax]
+      );
+      try {
+        map.fitBounds(bounds, { padding: 30, duration: 800 });
+      } catch (e) {
+        console.warn("fitBounds failed:", e);
+      }
+    }
+
     function resetRoundUI() {
       if (map && map.getSource(lineId)) { map.removeLayer(lineId); map.removeSource(lineId); }
       if (truthMarker) { truthMarker.remove(); truthMarker = null; }
@@ -401,7 +401,6 @@
 
         initViewer(pano.imageId);
 
-        // Detection summary (when filter is active)
         const dets = pano.detValues || [];
         if (dets.length) {
           const uniq = uniqueTopN(dets, 8);
@@ -559,7 +558,6 @@
         bounds.extend([guess.lng, guess.lat]); bounds.extend(truth);
         map.fitBounds(bounds, { padding: 50, duration: 1000 });
 
-        // --- Build round Features & add to allFeatures ---
         const roundNum = round;
         const region = document.getElementById("regionSelect").value;
         const feats = buildAnswerFeatures({
@@ -570,7 +568,6 @@
         });
         allFeatures.push(...feats);
 
-        // Per-round download dialog
         const roundFC = asFeatureCollection(feats, `mapiguesser-answer-round${roundNum}`);
         const msg = `Correct location was <b>${truth[1].toFixed(5)}, ${truth[0].toFixed(5)}</b>.<br/>`
           + `Distance from your answer was <b>${distanceKm.toFixed(1)} km</b>!`;
@@ -585,13 +582,12 @@
       }
     }
 
-    // ---- URL param to set default region (?region=ASIA or ?r=venezia etc.) ----
+    // URL param helpers
     function applyInitialRegionFromURL() {
       const sp = new URLSearchParams(location.search);
       let r = sp.get("region") || sp.get("r");
       if (!r) return;
       r = r.trim().toUpperCase().replace(/[^A-Z_]/g, "");
-      // Normalize aliases
       if (r === "LATINAMERICA" || r === "LATIN_AMERICA" || r === "LATIN" || r === "LATINAM" ) r = "LATAM";
       if (r === "OCEANEA") r = "OCEANIA";
       if (r === "MILAN") r = "MILANO";
@@ -601,14 +597,24 @@
         sel.value = r;
       }
     }
+    function updateRegionParamInURL() {
+      try {
+        const sel = document.getElementById("regionSelect");
+        if (!sel) return;
+        const r = (sel.value || "").toUpperCase();
+        const url = new URL(window.location.href);
+        url.searchParams.set("region", r);
+        history.replaceState({}, "", url.toString());
+      } catch (e) {
+        console.warn("URL update failed:", e);
+      }
+    }
 
-    // ---- Utils ----
     function randBetween(min, max) { return min + Math.random() * (max - min); }
     function shuffle(a) { for (let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; }
     function uniqueTopN(values, n) { const m=new Map(); for (const v of values) m.set(v,(m.get(v)||0)+1); return [...m.entries()].sort((a,b)=>b[1]-a[1]).slice(0,n).map(([k])=>k); }
     function makeGameId() { return Math.random().toString(36).slice(2, 10); }
 
-    // ---- Events ----
     window.addEventListener("DOMContentLoaded", () => {
       initMap();
 
@@ -621,17 +627,18 @@
         allFeatures = [];
         gameId = makeGameId();
         gameStartISO = new Date().toISOString();
+        // Update URL and zoom to selected region before fetching an image
+        updateRegionParamInURL();
+        fitMapToRegion(document.getElementById("regionSelect").value);
         nextRound();
       });
 
-      // Filter UI toggle
       document.getElementById("filterSelect").addEventListener("change", (e) => {
         const mode = e.target.value;
         document.getElementById("signPickerPanel").style.display = (mode === "TRAFFIC_SIGN_PICK") ? "block" : "none";
       });
       document.getElementById("filterSelect").dispatchEvent(new Event("change"));
 
-      // Select/Clear all
       document.getElementById("checkAllFam").addEventListener("click", () => {
         document.querySelectorAll(".family").forEach(el => el.checked = true);
       });
@@ -639,11 +646,7 @@
         document.querySelectorAll(".family").forEach(el => el.checked = false);
       });
 
-      // Export all / clear all
-      document.getElementById("exportAllBtn").addEventListener("click", exportAllRounds);
-      document.getElementById("clearAllBtn").addEventListener("click", clearAllRounds);
-
-      // Apply URL default region → auto-start a new game
+      // Apply URL default region → auto-start a new game (this will also zoom via the New Game handler)
       applyInitialRegionFromURL();
       document.getElementById("newGameBtn").click();
     });
