@@ -32,8 +32,8 @@
     button.ghost { background:#0d1117; border:1px dashed #3b4358; }
     button:disabled { opacity: .6; cursor: not-allowed; }
     .layout { display: grid; grid-template-columns: 1.25fr .75fr; gap: 8px; padding: 8px; }
-    #mly { height: calc(100vh - 168px); border-radius: 10px; overflow: hidden; background:#000; }
-    #map { height: calc(58vh - 168px); border-radius: 10px; overflow: hidden; }
+    #mly { height: calc(100vh - 168px); border-radius: 10px; overflow: hidden; background:#000; position: relative; }
+    #map { height: calc(58vh - 168px); border-radius: 10px; overflow: hidden; position: relative; }
     .right { display: grid; grid-template-rows: auto auto 1fr auto; gap: 8px; }
     .panel { background: var(--panel); border: 1px solid #1f2633; border-radius: 10px; padding: 10px; }
     .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
@@ -46,21 +46,31 @@
     .hint { color: var(--muted); font-size: 12px; margin-left: 4px; }
     .kbd { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
     .badge { background: #0d1117; border:1px solid #3b4358; padding:4px 8px; border-radius: 999px; font-size: 11px; color: var(--muted); }
-    .grid2 { display:grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap:6px; }
-    .fieldset { border:1px solid #2b3242; border-radius:10px; padding:8px; }
-    .legend { font-size:12px; color:var(--muted); margin-bottom:6px; }
-    .checkbox { display:flex; align-items:center; gap:6px; font-size:13px; padding:4px 6px; border-radius:8px; }
-    .checkbox:hover { background:#0d1117; }
-    .chips { display:flex; gap:6px; flex-wrap:wrap; margin-top:6px; }
-    dialog {
-      border: 1px solid #2b3242; background: #111521; color: var(--text);
-      border-radius: 12px; padding: 16px 18px; max-width: 560px;
-      box-shadow: 0 10px 40px rgba(0,0,0,.6);
+
+    /* ===== WORLD loading banner (center over MLY) ===== */
+    .world-banner {
+      position: absolute;
+      top: 50%; left: 50%; transform: translate(-50%, -50%);
+      z-index: 9;
+      width: min(88%, 860px);
+      background: linear-gradient(90deg, rgba(0,179,164,.96), rgba(78,125,242,.96));
+      color: #0b1020;
+      border-radius: 16px;
+      padding: 18px 22px;
+      font-size: 16px; font-weight: 900; letter-spacing: .2px;
+      text-align: center;
+      box-shadow: 0 18px 60px rgba(0,0,0,.45);
+      display: none;
+      pointer-events: none;
+      backdrop-filter: blur(1px);
     }
-    dialog::backdrop { background: rgba(2,4,8,.6); }
-    .dialog-title { font-weight: 800; margin: 0 0 6px; font-size: 16px; }
-    .dialog-msg { font-size: 14px; line-height: 1.6; margin-bottom: 12px; }
-    .dialog-actions { display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap; }
+    .world-banner .sub {
+      display:block; font-weight:700; opacity:.9; margin-top:4px; font-size:13px;
+    }
+    .world-banner.show { display: block; animation: fadeIn .18s ease-out; }
+    .world-banner.hide { animation: fadeOut .18s ease-in forwards; }
+    @keyframes fadeIn { from { opacity: 0; transform: translate(-50%, calc(-50% - 8px)); } to { opacity: 1; transform: translate(-50%, -50%); } }
+    @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
   </style>
 </head>
 <body>
@@ -77,14 +87,18 @@
             <option value="AFRICA">Africa</option>
             <option value="N_AMERICA">North America</option>
             <option value="LATAM">Latin America</option>
+            <option value="GERMANY">Germany</option>
+            <option value="NETHERLANDS">Netherlands</option>
+            <option value="AMSTERDAM">Amsterdam (Netherlands)</option>
+            <option value="DELFT">Delft (Netherlands)</option>
             <option value="JAPAN">Japan</option>
             <option value="TOKYO">Tokyo (Japan)</option>
             <option value="ITALY">Italy</option>
             <option value="MILANO">Milan (Italy)</option>
             <option value="COMO">Como (Italy)</option>
             <option value="VENEZIA">Venice (Italy)</option>
-            <option value="AMSTERDAM">Amsterdam (Netherlands)</option>
             <option value="BERLIN">Berlin (Germany)</option>
+            <option value="SJMILANO">Scuola Giapponese di Milano (IT)</option>
           </select>
         </label>
         <label>Rounds:
@@ -107,34 +121,38 @@
     </header>
 
     <div class="layout">
-      <div id="mly" aria-label="Mapillary JS 360° viewer"></div>
+      <div id="mly" aria-label="Mapillary JS 360° viewer">
+        <div id="worldBanner" class="world-banner" role="status" aria-live="polite" aria-atomic="true">
+          <!-- The message content is controlled by the JSON block below -->
+        </div>
+      </div>
 
       <div class="right">
         <div class="panel" id="signPickerPanel" style="display:none">
-          <div class="legend">Pick traffic sign types (OR condition)</div>
-          <div class="grid2">
-            <div class="fieldset">
-              <div class="legend">Families (prefix match)</div>
-              <div class="checkbox"><input type="checkbox" class="family" value="regulatory--" id="fam-reg"><label for="fam-reg">regulatory-- (regulatory)</label></div>
-              <div class="checkbox"><input type="checkbox" class="family" value="warning--" id="fam-war"><label for="fam-war">warning-- (warning)</label></div>
-              <div class="checkbox"><input type="checkbox" class="family" value="information--" id="fam-inf"><label for="fam-inf">information-- (information)</label></div>
-              <div class="checkbox"><input type="checkbox" class="family" value="complementary--" id="fam-com"><label for="fam-com">complementary-- (complementary)</label></div>
-              <div class="checkbox"><input type="checkbox" class="family" value="temporary--" id="fam-temp"><label for="fam-temp">temporary-- (temporary)</label></div>
-              <div class="checkbox"><input type="checkbox" class="family" value="other-sign" id="fam-oth"><label for="fam-oth">other-sign (others)</label></div>
-              <div class="chips">
+          <div class="small" style="margin-bottom:6px">Pick traffic sign types (OR condition)</div>
+          <div style="display:grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap:6px;">
+            <div class="panel" style="padding:8px">
+              <div class="small">Families (prefix match)</div>
+              <label class="row" style="gap:6px"><input type="checkbox" class="family" value="regulatory--">regulatory--</label>
+              <label class="row" style="gap:6px"><input type="checkbox" class="family" value="warning--">warning--</label>
+              <label class="row" style="gap:6px"><input type="checkbox" class="family" value="information--">information--</label>
+              <label class="row" style="gap:6px"><input type="checkbox" class="family" value="complementary--">complementary--</label>
+              <label class="row" style="gap:6px"><input type="checkbox" class="family" value="temporary--">temporary--</label>
+              <label class="row" style="gap:6px"><input type="checkbox" class="family" value="other-sign">other-sign</label>
+              <div class="row" style="gap:6px; margin-top:6px">
                 <button id="checkAllFam" class="ghost">Select all</button>
                 <button id="clearAllFam" class="ghost">Clear all</button>
               </div>
             </div>
-            <div class="fieldset">
-              <div class="legend">Representative types (prefix match)</div>
-              <label class="checkbox"><input type="checkbox" class="type" value="regulatory--stop">stop</label>
-              <label class="checkbox"><input type="checkbox" class="type" value="regulatory--give-way">give-way / yield</label>
-              <label class="checkbox"><input type="checkbox" class="type" value="regulatory--no-entry">no-entry</label>
-              <label class="checkbox"><input type="checkbox" class="type" value="regulatory--maximum-speed-limit">speed-limit</label>
-              <label class="checkbox"><input type="checkbox" class="type" value="warning--children">children</label>
-              <label class="checkbox"><input type="checkbox" class="type" value="warning--pedestrian-crossing">pedestrian-crossing</label>
-              <label class="checkbox"><input type="checkbox" class="type" value="information--parking">parking</label>
+            <div class="panel" style="padding:8px">
+              <div class="small">Representative types (prefix match)</div>
+              <label class="row" style="gap:6px"><input type="checkbox" class="type" value="regulatory--stop">stop</label>
+              <label class="row" style="gap:6px"><input type="checkbox" class="type" value="regulatory--give-way">give-way / yield</label>
+              <label class="row" style="gap:6px"><input type="checkbox" class="type" value="regulatory--no-entry">no-entry</label>
+              <label class="row" style="gap:6px"><input type="checkbox" class="type" value="regulatory--maximum-speed-limit">speed-limit</label>
+              <label class="row" style="gap:6px"><input type="checkbox" class="type" value="warning--children">children</label>
+              <label class="row" style="gap:6px"><input type="checkbox" class="type" value="warning--pedestrian-crossing">pedestrian-crossing</label>
+              <label class="row" style="gap:6px"><input type="checkbox" class="type" value="information--parking">parking</label>
             </div>
           </div>
         </div>
@@ -180,6 +198,17 @@
     </div>
   </div>
 
+  <!-- Paste your custom WORLD loading messages in JSON (UTF-8). Example below. -->
+  <script id="worldBannerMessages" type="application/json">
+  [
+      "🗺️ Keep walking; persistence paid off. — inspired by Tadataka Ino",
+      "🛰️ May the FOSS4G be with you — inspired by Star Wars",
+      "🌐 The world around you is not what it seems. — Ingress",
+      "🗺️ Publish or Die — Taichi a.k.a. @mapconcierge",
+      "🧭 Adventure Together — John Hanke"
+  ]
+  </script>
+
   <dialog id="resultDialog">
     <h3 class="dialog-title">Result</h3>
     <div class="dialog-msg" id="dialogMsg"></div>
@@ -191,14 +220,13 @@
   </dialog>
 
   <script>
-    const VERSION = "v0.7.0";
+    const VERSION = "v0.8.0";
     window.addEventListener("DOMContentLoaded", () => {
       const el = document.getElementById("verBadge");
       if (el && VERSION) el.textContent = VERSION;
     });
 
-    // Keep user's token default, but allow override via ?token=MLY|...
-    //let MAPILLARY_TOKEN = "MLY|PUT_YOUR_TOKEN_HERE";
+    // Token (overridable by ?token=MLY|...)
     let MAPILLARY_TOKEN = "MLY|24235641766046915|000d3d2e3e39d1df6841a80d7d647f4d";
     const _sp = new URLSearchParams(location.search);
     const _spToken = _sp.get("token");
@@ -212,6 +240,9 @@
       AFRICA:  {latMin: -35, latMax: 38, lonMin: -19,  lonMax: 52,  sizeDeg: 0.7},
       N_AMERICA:{latMin: 14, latMax: 72, lonMin: -168, lonMax: -52, sizeDeg: 0.8},
       LATAM:   {latMin: -56, latMax: 33, lonMin: -118, lonMax: -34, sizeDeg: 0.8},
+      GERMANY: {latMin: 47.20, latMax: 55.10, lonMin: 5.90, lonMax: 15.10, sizeDeg: 0.35},
+      NETHERLANDS: {latMin: 50.75, latMax: 53.70, lonMin: 3.20, lonMax: 7.22, sizeDeg: 0.22},
+      DELFT: {latMin: 51.984, latMax: 52.023, lonMin: 4.323, lonMax: 4.386, sizeDeg: 0.015},
       JAPAN:   {latMin: 24,  latMax: 46, lonMin: 122,  lonMax: 146, sizeDeg: 0.35},
       TOKYO:   {latMin: 35.600, latMax: 35.740, lonMin: 139.650, lonMax: 139.840, sizeDeg: 0.060},
       ITALY:   {latMin: 36.5,latMax: 47.5,lonMin: 6.5, lonMax: 18.8, sizeDeg: 0.35},
@@ -220,6 +251,7 @@
       VENEZIA: {latMin: 45.420, latMax: 45.450, lonMin: 12.300, lonMax: 12.370, sizeDeg: 0.020},
       AMSTERDAM:{latMin: 52.350, latMax: 52.390, lonMin: 4.840, lonMax: 4.960, sizeDeg: 0.030},
       BERLIN:  {latMin: 52.490, latMax: 52.540, lonMin: 13.350, lonMax: 13.470, sizeDeg: 0.035},
+      SJMILANO: {latMin: 45.445228475453206, latMax: 45.4641990029487, lonMin: 9.120423710679688, lonMax: 9.156463694786225, sizeDeg: 0.010},
     };
     const MAX_FETCH_TRIES = 60;
     const MAX_PER_BBOX_CANDIDATES = 18;
@@ -238,6 +270,60 @@
     let allFeatures = [];
     let gameId = null;
     let gameStartISO = null;
+
+    // ===== WORLD banner messages via JSON (UTF-8) =====
+    const WORLD_BANNER_MIN_MS = 3000;
+    let _worldShownAt = 0;
+    let _worldHideTimer = null;
+    const WORLD_MESSAGES_DEFAULT = [
+      "🌍 Exploring the entire world… this might take a few seconds.",
+      "🧭 Scanning continents for a panorama… hang tight!",
+      "🌐 World mode is huge — finding a nice 360° spot…",
+      "🛰️ Looking around the globe for a panorama… just a moment!"
+    ];
+    function getWorldMessages() {
+      const el = document.getElementById("worldBannerMessages");
+      if (!el) return WORLD_MESSAGES_DEFAULT;
+      try {
+        const arr = JSON.parse(el.textContent);
+        if (Array.isArray(arr) && arr.length) return arr;
+      } catch (e) {}
+      return WORLD_MESSAGES_DEFAULT;
+    }
+    function pickWorldMsg() {
+      const list = getWorldMessages();
+      return list[Math.floor(Math.random() * list.length)];
+    }
+    function showWorldBanner() {
+      const el = document.getElementById("worldBanner");
+      if (!el) return;
+      el.classList.remove("hide");
+      el.textContent = "";
+      const strong = document.createElement("div");
+      strong.textContent = pickWorldMsg();
+      const sub = document.createElement("span");
+      sub.className = "sub";
+      sub.textContent = "Fetching a random 360° panorama for you…";
+      el.appendChild(strong);
+      el.appendChild(sub);
+
+      el.classList.add("show");
+      el.style.display = "block";
+      _worldShownAt = Date.now();
+      if (_worldHideTimer) { clearTimeout(_worldHideTimer); _worldHideTimer = null; }
+    }
+    function hideWorldBannerAfterMin() {
+      const el = document.getElementById("worldBanner");
+      if (!el || el.style.display === "none") return;
+      const elapsed = Date.now() - _worldShownAt;
+      const wait = Math.max(0, WORLD_BANNER_MIN_MS - elapsed);
+      if (_worldHideTimer) clearTimeout(_worldHideTimer);
+      _worldHideTimer = setTimeout(() => {
+        el.classList.remove("show");
+        el.classList.add("hide");
+        setTimeout(() => { el.style.display = "none"; el.classList.remove("hide"); }, 180);
+      }, wait);
+    }
 
     function rasterStyle(tiles, attribution) {
       return {
@@ -362,17 +448,13 @@
       throw new Error("No candidates matched the conditions. Change the filter/area and try again.");
     }
 
-    // ------- NEW: zoom map to region bbox -------
     function fitMapToRegion(regionKey) {
       if (!map) return;
       const r = REGION_BOXES[regionKey];
       if (!r) return;
-      const bounds = new maplibregl.LngLatBounds(
-        [r.lonMin, r.latMin],
-        [r.lonMax, r.latMax]
-      );
+      const bounds = new maplibregl.LngLatBounds([r.lonMin, r.latMin],[r.lonMax, r.latMax]);
       try {
-        map.fitBounds(bounds, { padding: 30, duration: 800 });
+        map.fitBounds(bounds, { padding: 30, duration: 600 });
       } catch (e) {
         console.warn("fitBounds failed:", e);
       }
@@ -394,11 +476,12 @@
       updateRoundInfo();
       setButtonsBusy(true);
 
+      const region = document.getElementById("regionSelect").value;
+      if (region === "WORLD") showWorldBanner();
+
       try {
-        const region = document.getElementById("regionSelect").value;
         const pano = await pickRandomPano(region);
         currentTruth = { lng: pano.lng, lat: pano.lat, imageId: pano.imageId };
-
         initViewer(pano.imageId);
 
         const dets = pano.detValues || [];
@@ -414,6 +497,7 @@
         updateRoundInfo();
         alert("Failed to fetch an image: " + err.message);
       } finally {
+        if (region === "WORLD") hideWorldBannerAfterMin();
         setButtonsBusy(false);
       }
     }
@@ -582,7 +666,6 @@
       }
     }
 
-    // URL param helpers
     function applyInitialRegionFromURL() {
       const sp = new URLSearchParams(location.search);
       let r = sp.get("region") || sp.get("r");
@@ -592,6 +675,9 @@
       if (r === "OCEANEA") r = "OCEANIA";
       if (r === "MILAN") r = "MILANO";
       if (r === "VENICE" || r === "VENEZIA") r = "VENEZIA";
+      if (r === "DEUTSCHLAND" || r === "ドイツ") r = "GERMANY";
+      if (r === "NEDERLAND" || r === "NEDERLANDS" || r === "OLANDA" || r === "オランダ") r = "NETHERLANDS";
+      if (r === "SCUOLA" || r === "SCUOLA_GIAPPONESE_MILANO" || r === "SCUOLA_GIAPPONESE_DI_MILANO" || r === "SJM") r = "SJMILANO";
       if (REGION_BOXES[r]) {
         const sel = document.getElementById("regionSelect");
         sel.value = r;
@@ -621,15 +707,16 @@
       document.getElementById("submitBtn").addEventListener("click", onSubmit);
       document.getElementById("clearBtn").addEventListener("click", () => { if (guessMarker) { guessMarker.remove(); guessMarker = null; } });
       document.getElementById("skipBtn").addEventListener("click", () => nextRound());
+
       document.getElementById("newGameBtn").addEventListener("click", () => {
         score = 0; round = 0; maxRounds = parseInt(document.getElementById("roundsSelect").value, 10) || 10;
         updateRoundInfo();
         allFeatures = [];
         gameId = makeGameId();
         gameStartISO = new Date().toISOString();
-        // Update URL and zoom to selected region before fetching an image
         updateRegionParamInURL();
-        fitMapToRegion(document.getElementById("regionSelect").value);
+        const region = document.getElementById("regionSelect").value;
+        fitMapToRegion(region);
         nextRound();
       });
 
@@ -646,7 +733,11 @@
         document.querySelectorAll(".family").forEach(el => el.checked = false);
       });
 
-      // Apply URL default region → auto-start a new game (this will also zoom via the New Game handler)
+      const regionSel = document.getElementById("regionSelect");
+      regionSel.addEventListener("change", () => {
+        fitMapToRegion(regionSel.value);
+      });
+
       applyInitialRegionFromURL();
       document.getElementById("newGameBtn").click();
     });
