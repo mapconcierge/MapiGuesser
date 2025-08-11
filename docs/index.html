@@ -4,73 +4,43 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>MapiGuesser BETA</title>
-
-  <!-- MapLibre GL JS -->
   <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.6.2/dist/maplibre-gl.css" />
   <script src="https://unpkg.com/maplibre-gl@5.6.2/dist/maplibre-gl.js"></script>
-
-  <!-- MapillaryJS -->
   <link rel="stylesheet" href="https://unpkg.com/mapillary-js@4.1.2/dist/mapillary.css" />
   <script src="https://unpkg.com/mapillary-js@4.1.2/dist/mapillary.js"></script>
-
-  <!-- Turf.js -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Turf.js/6.5.0/turf.min.js"></script>
-
   <style>
-    :root {
-      --bg: #0f1115; --panel: #151a22; --text: #e9eef5; --muted: #aab3c2;
-      --accent: #00b3a4; --accent-2: #4e7df2;
-    }
-    html, body { margin: 0; height: 100%; width: 100%; background: var(--bg); color: var(--text);
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Noto Sans, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji"; }
-    .app { display: grid; grid-template-rows: auto 1fr; height: 100%; gap: 8px; }
-    header { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 12px; padding: 10px 14px; background: var(--panel); border-bottom: 1px solid #1f2633; }
-    header h1 { margin: 0; font-size: 16px; font-weight: 800; letter-spacing: .2px; }
-    header .controls { display:flex; flex-wrap: wrap; align-items: center; gap: 10px; justify-content:flex-end; }
-    select, button, input { background: #0d1117; color: var(--text); border: 1px solid #2b3242; border-radius: 8px; padding: 8px 10px; font-size: 13px; }
-    button.primary { background: linear-gradient(90deg, var(--accent), var(--accent-2)); border: none; }
-    button.ghost { background:#0d1117; border:1px dashed #3b4358; }
-    button:disabled { opacity: .6; cursor: not-allowed; }
-    .layout { display: grid; grid-template-columns: 1.25fr .75fr; gap: 8px; padding: 8px; }
-    #mly { height: calc(100vh - 168px); border-radius: 10px; overflow: hidden; background:#000; position: relative; }
-    #map { height: calc(58vh - 168px); border-radius: 10px; overflow: hidden; position: relative; }
-    .right { display: grid; grid-template-rows: auto auto 1fr auto; gap: 8px; }
-    .panel { background: var(--panel); border: 1px solid #1f2633; border-radius: 10px; padding: 10px; }
-    .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-    .score { display: flex; gap: 16px; align-items: baseline; margin: 6px 0 12px; }
-    .score .big { font-size: 22px; font-weight: 800; }
-    .score .muted { color: var(--muted); font-size: 12px; }
-    .result { margin-top: 10px; font-size: 14px; line-height: 1.45; }
-    .small { color: var(--muted); font-size: 12px; }
-    .pill { background: #0d1117; border: 1px solid #2b3242; border-radius: 999px; padding: 6px 10px; font-size: 12px;}
-    .hint { color: var(--muted); font-size: 12px; margin-left: 4px; }
-    .kbd { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
-    .badge { background: #0d1117; border:1px solid #3b4358; padding:4px 8px; border-radius: 999px; font-size: 11px; color: var(--muted); }
-
-    /* ===== WORLD loading banner (center over MLY) ===== */
-    .world-banner {
-      position: absolute;
-      top: 50%; left: 50%; transform: translate(-50%, -50%);
-      z-index: 9;
-      width: min(88%, 860px);
-      background: linear-gradient(90deg, rgba(0,179,164,.96), rgba(78,125,242,.96));
-      color: #0b1020;
-      border-radius: 16px;
-      padding: 18px 22px;
-      font-size: 16px; font-weight: 900; letter-spacing: .2px;
-      text-align: center;
-      box-shadow: 0 18px 60px rgba(0,0,0,.45);
-      display: none;
-      pointer-events: none;
-      backdrop-filter: blur(1px);
-    }
-    .world-banner .sub {
-      display:block; font-weight:700; opacity:.9; margin-top:4px; font-size:13px;
-    }
-    .world-banner.show { display: block; animation: fadeIn .18s ease-out; }
-    .world-banner.hide { animation: fadeOut .18s ease-in forwards; }
-    @keyframes fadeIn { from { opacity: 0; transform: translate(-50%, calc(-50% - 8px)); } to { opacity: 1; transform: translate(-50%, -50%); } }
-    @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
+    :root { --bg:#0f1115; --panel:#151a22; --text:#e9eef5; --muted:#aab3c2; --accent:#00b3a4; --accent-2:#4e7df2; }
+    html,body{margin:0;height:100%;width:100%;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Noto Sans,Helvetica,Arial,"Apple Color Emoji","Segoe UI Emoji"}
+    .app{display:grid;grid-template-rows:auto 1fr;height:100%;gap:8px}
+    header{display:grid;grid-template-columns:1fr auto;align-items:center;gap:12px;padding:10px 14px;background:var(--panel);border-bottom:1px solid #1f2633}
+    header h1{margin:0;font-size:16px;font-weight:800;letter-spacing:.2px}
+    header .controls{display:flex;flex-wrap:wrap;align-items:center;gap:10px;justify-content:flex-end}
+    select,button,input{background:#0d1117;color:var(--text);border:1px solid #2b3242;border-radius:8px;padding:8px 10px;font-size:13px}
+    button.primary{background:linear-gradient(90deg,var(--accent),var(--accent-2));border:none}
+    button.ghost{background:#0d1117;border:1px dashed #3b4358}
+    button:disabled{opacity:.6;cursor:not-allowed}
+    .layout{display:grid;grid-template-columns:1.25fr .75fr;gap:8px;padding:8px}
+    #mly{height:calc(100vh - 168px);border-radius:10px;overflow:hidden;background:#000;position:relative}
+    #map{height:calc(58vh - 168px);border-radius:10px;overflow:hidden;position:relative}
+    .right{display:grid;grid-template-rows:auto auto 1fr auto;gap:8px}
+    .panel{background:var(--panel);border:1px solid #1f2633;border-radius:10px;padding:10px}
+    .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    .score{display:flex;gap:16px;align-items:baseline;margin:6px 0 12px}
+    .score .big{font-size:22px;font-weight:800}
+    .score .muted{color:var(--muted);font-size:12px}
+    .result{margin-top:10px;font-size:14px;line-height:1.45}
+    .small{color:var(--muted);font-size:12px}
+    .pill{background:#0d1117;border:1px solid #2b3242;border-radius:999px;padding:6px 10px;font-size:12px}
+    .hint{color:var(--muted);font-size:12px;margin-left:4px}
+    .kbd{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace}
+    .badge{background:#0d1117;border:1px solid #3b4358;padding:4px 8px;border-radius:999px;font-size:11px;color:var(--muted)}
+    .world-banner{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:9;width:min(88%,860px);background:linear-gradient(90deg,rgba(0,179,164,.96),rgba(78,125,242,.96));color:#0b1020;border-radius:16px;padding:18px 22px;font-size:16px;font-weight:900;letter-spacing:.2px;text-align:center;box-shadow:0 18px 60px rgba(0,0,0,.45);display:none;pointer-events:none;backdrop-filter:blur(1px)}
+    .world-banner .sub{display:block;font-weight:700;opacity:.9;margin-top:4px;font-size:13px}
+    .world-banner.show{display:block;animation:fadeIn .18s ease-out}
+    .world-banner.hide{animation:fadeOut .18s ease-in forwards}
+    @keyframes fadeIn{from{opacity:0;transform:translate(-50%,calc(-50% - 8px))}to{opacity:1;transform:translate(-50%,-50%)}}
+    @keyframes fadeOut{from{opacity:1}to{opacity:0}}
   </style>
 </head>
 <body>
@@ -99,12 +69,11 @@
             <option value="VENEZIA">Venice (Italy)</option>
             <option value="BERLIN">Berlin (Germany)</option>
             <option value="SJMILANO">Scuola Giapponese di Milano (IT)</option>
+            <option value="BOLDINASCO">Boldinasco (Italy)</option>
           </select>
         </label>
         <label>Rounds:
-          <select id="roundsSelect">
-            <option>5</option><option selected>10</option><option>20</option>
-          </select>
+          <select id="roundsSelect"><option>5</option><option selected>10</option><option>20</option></select>
         </label>
         <label>Question filter:
           <select id="filterSelect">
@@ -121,16 +90,12 @@
     </header>
 
     <div class="layout">
-      <div id="mly" aria-label="Mapillary JS 360° viewer">
-        <div id="worldBanner" class="world-banner" role="status" aria-live="polite" aria-atomic="true">
-          <!-- The message content is controlled by the JSON block below -->
-        </div>
-      </div>
+      <div id="mly" aria-label="Mapillary JS 360° viewer"><div id="worldBanner" class="world-banner" role="status" aria-live="polite" aria-atomic="true"></div></div>
 
       <div class="right">
         <div class="panel" id="signPickerPanel" style="display:none">
           <div class="small" style="margin-bottom:6px">Pick traffic sign types (OR condition)</div>
-          <div style="display:grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap:6px;">
+          <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px">
             <div class="panel" style="padding:8px">
               <div class="small">Families (prefix match)</div>
               <label class="row" style="gap:6px"><input type="checkbox" class="family" value="regulatory--">regulatory--</label>
@@ -139,7 +104,7 @@
               <label class="row" style="gap:6px"><input type="checkbox" class="family" value="complementary--">complementary--</label>
               <label class="row" style="gap:6px"><input type="checkbox" class="family" value="temporary--">temporary--</label>
               <label class="row" style="gap:6px"><input type="checkbox" class="family" value="other-sign">other-sign</label>
-              <div class="row" style="gap:6px; margin-top:6px">
+              <div class="row" style="gap:6px;margin-top:6px">
                 <button id="checkAllFam" class="ghost">Select all</button>
                 <button id="clearAllFam" class="ghost">Clear all</button>
               </div>
@@ -183,35 +148,28 @@
             <span class="pill" id="lastDistance">—</span>
           </div>
           <div class="result" id="result">Look around the 360° panorama and make your guess!</div>
-          <div class="small" style="margin-top:10px">
-            Hint: <span class="kbd">Shift</span> + drag to pan / mouse wheel to zoom
-          </div>
-          <div class="small" id="detSummary" style="margin-top:8px; opacity:.85"></div>
+          <div class="small" style="margin-top:10px">Hint: <span class="kbd">Shift</span> + drag to pan / mouse wheel to zoom</div>
+          <div class="small" id="detSummary" style="margin-top:8px;opacity:.85"></div>
         </div>
 
-        <div class="panel">
-          <div class="small">
-            Uses Mapillary Graph API v4: <span class="kbd">/images</span>, <span class="kbd">/{image_id}/detections</span>.
-          </div>
-        </div>
+        <div class="panel"><div class="small">Uses Mapillary Graph API v4: <span class="kbd">/images</span>, <span class="kbd">/{image_id}/detections</span>.</div></div>
       </div>
     </div>
   </div>
 
-  <!-- Paste your custom WORLD loading messages in JSON (UTF-8). Example below. -->
-  <!-- Paste your custom WORLD loading messages in JSON (UTF-8). Example below. -->
   <script id="worldBannerMessages" type="application/json">
   [
       "🗺️ Keep walking; persistence paid off. — inspired by Tadataka Ino",
       "🛰️ May the FOSS4G be with you — inspired by Star Wars",
-      "🗺️ The story isn’t so much about the data and technology, and it never was. It’s the people. — by Steve Coast",
-      "🌐 The world around you is not what it seems. — by Ingress",
-      "🌐 Shapefiles must die — by switchfromshapefile.org",
-      "🗺️ Publish or Die — by Taichi a.k.a. @mapconcierge",
-      "🧭 Adventure Together — by John Hanke"
+      "🗺️ The story isn’t so much about the data and technology, and it never was. It’s the people. — Steve Coast",
+      "🌐 The world around you is not what it seems. — Ingress",
+      "🗺️ Publish or Die — Taichi a.k.a. @mapconcierge",
+      "📷️ Only start something if you are willing to spend at least a decade on it. — Jan Erik Solem",
+      "🗺️ The expectations for people using maps is very different than it was 10 years ago. — Jan Erik Solem",
+      "🧭 Adventure Together — John Hanke"
   ]
   </script>
-  
+
   <dialog id="resultDialog">
     <h3 class="dialog-title">Result</h3>
     <div class="dialog-msg" id="dialogMsg"></div>
@@ -223,38 +181,37 @@
   </dialog>
 
   <script>
-    const VERSION = "v0.8.0";
+    const VERSION = "v0.8.2";
     window.addEventListener("DOMContentLoaded", () => {
-      const el = document.getElementById("verBadge");
-      if (el && VERSION) el.textContent = VERSION;
+      const el = document.getElementById("verBadge"); if (el && VERSION) el.textContent = VERSION;
     });
 
-    // Token (overridable by ?token=MLY|...)
     let MAPILLARY_TOKEN = "MLY|24235641766046915|000d3d2e3e39d1df6841a80d7d647f4d";
     const _sp = new URLSearchParams(location.search);
     const _spToken = _sp.get("token");
     if (_spToken && _spToken.startsWith("MLY|")) MAPILLARY_TOKEN = _spToken;
 
     const REGION_BOXES = {
-      WORLD:   {latMin: -85, latMax: 85, lonMin: -180, lonMax: 180, sizeDeg: 0.6},
-      ASIA:    {latMin: -10, latMax: 77, lonMin: 26,   lonMax: 180, sizeDeg: 0.7},
-      OCEANIA: {latMin: -50, latMax: 15, lonMin: 110,  lonMax: 180, sizeDeg: 0.8},
-      EUROPE:  {latMin: 35,  latMax: 71, lonMin: -11,  lonMax: 30,  sizeDeg: 0.6},
-      AFRICA:  {latMin: -35, latMax: 38, lonMin: -19,  lonMax: 52,  sizeDeg: 0.7},
-      N_AMERICA:{latMin: 14, latMax: 72, lonMin: -168, lonMax: -52, sizeDeg: 0.8},
-      LATAM:   {latMin: -56, latMax: 33, lonMin: -118, lonMax: -34, sizeDeg: 0.8},
-      GERMANY: {latMin: 47.20, latMax: 55.10, lonMin: 5.90, lonMax: 15.10, sizeDeg: 0.35},
-      NETHERLANDS: {latMin: 50.75, latMax: 53.70, lonMin: 3.20, lonMax: 7.22, sizeDeg: 0.22},
-      DELFT: {latMin: 51.984, latMax: 52.023, lonMin: 4.323, lonMax: 4.386, sizeDeg: 0.015},
-      JAPAN:   {latMin: 24,  latMax: 46, lonMin: 122,  lonMax: 146, sizeDeg: 0.35},
-      TOKYO:   {latMin: 35.600, latMax: 35.740, lonMin: 139.650, lonMax: 139.840, sizeDeg: 0.060},
-      ITALY:   {latMin: 36.5,latMax: 47.5,lonMin: 6.5, lonMax: 18.8, sizeDeg: 0.35},
-      MILANO:  {latMin: 45.424, latMax: 45.513, lonMin: 9.100, lonMax: 9.280, sizeDeg: 0.020},
-      COMO:    {latMin: 45.788, latMax: 45.823, lonMin: 9.060, lonMax: 9.112, sizeDeg: 0.025},
-      VENEZIA: {latMin: 45.420, latMax: 45.450, lonMin: 12.300, lonMax: 12.370, sizeDeg: 0.020},
-      AMSTERDAM:{latMin: 52.350, latMax: 52.390, lonMin: 4.840, lonMax: 4.960, sizeDeg: 0.030},
-      BERLIN:  {latMin: 52.490, latMax: 52.540, lonMin: 13.350, lonMax: 13.470, sizeDeg: 0.035},
-      SJMILANO: {latMin: 45.445228475453206, latMax: 45.4641990029487, lonMin: 9.120423710679688, lonMax: 9.156463694786225, sizeDeg: 0.010},
+      WORLD:{latMin:-85,latMax:85,lonMin:-180,lonMax:180,sizeDeg:0.6},
+      ASIA:{latMin:-10,latMax:77,lonMin:26,lonMax:180,sizeDeg:0.7},
+      OCEANIA:{latMin:-50,latMax:15,lonMin:110,lonMax:180,sizeDeg:0.8},
+      EUROPE:{latMin:35,latMax:71,lonMin:-11,lonMax:30,sizeDeg:0.6},
+      AFRICA:{latMin:-35,latMax:38,lonMin:-19,lonMax:52,sizeDeg:0.7},
+      N_AMERICA:{latMin:14,latMax:72,lonMin:-168,lonMax:-52,sizeDeg:0.8},
+      LATAM:{latMin:-56,latMax:33,lonMin:-118,lonMax:-34,sizeDeg:0.8},
+      GERMANY:{latMin:47.20,latMax:55.10,lonMin:5.90,lonMax:15.10,sizeDeg:0.35},
+      NETHERLANDS:{latMin:50.75,latMax:53.70,lonMin:3.20,lonMax:7.22,sizeDeg:0.22},
+      DELFT:{latMin:51.980,latMax:52.030,lonMin:4.300,lonMax:4.420,sizeDeg:0.015},
+      JAPAN:{latMin:24,latMax:46,lonMin:122,lonMax:146,sizeDeg:0.35},
+      TOKYO:{latMin:35.600,latMax:35.740,lonMin:139.650,lonMax:139.840,sizeDeg:0.060},
+      ITALY:{latMin:36.5,latMax:47.5,lonMin:6.5,lonMax:18.8,sizeDeg:0.35},
+      MILANO:{latMin:45.424,latMax:45.513,lonMin:9.100,lonMax:9.280,sizeDeg:0.020},
+      COMO:{latMin:45.788,latMax:45.823,lonMin:9.060,lonMax:9.112,sizeDeg:0.025},
+      VENEZIA:{latMin:45.420,latMax:45.450,lonMin:12.300,lonMax:12.370,sizeDeg:0.020},
+      AMSTERDAM:{latMin:52.350,latMax:52.390,lonMin:4.840,lonMax:4.960,sizeDeg:0.030},
+      BERLIN:{latMin:52.490,latMax:52.540,lonMin:13.350,lonMax:13.470,sizeDeg:0.035},
+      SJMILANO:{latMin:45.445228475453206,latMax:45.4641990029487,lonMin:9.120423710679688,lonMax:9.156463694786225,sizeDeg:0.010},
+      BOLDINASCO:{latMin:45.485115427373245,latMax:45.5018704053295,lonMin:9.12281726793367,lonMax:9.157919996081318,sizeDeg:0.010}
     };
     const MAX_FETCH_TRIES = 60;
     const MAX_PER_BBOX_CANDIDATES = 18;
@@ -274,477 +231,251 @@
     let gameId = null;
     let gameStartISO = null;
 
-    // ===== WORLD banner messages via JSON (UTF-8) =====
     const WORLD_BANNER_MIN_MS = 3000;
     let _worldShownAt = 0;
     let _worldHideTimer = null;
     const WORLD_MESSAGES_DEFAULT = [
       "🗺️ Keep walking; persistence paid off. — inspired by Tadataka Ino",
       "🛰️ May the FOSS4G be with you — inspired by Star Wars",
-      "🗺️ The story isn’t so much about the data and technology, and it never was. It’s the people. — by Steve Coast",
+      "🗺️ The story isn’t so much about the data and technology, and it never was. It’s the people. — Steve Coast",
       "🌐 The world around you is not what it seems. — Ingress",
-      "🗺️ Publish or Die — by Taichi a.k.a. @mapconcierge",
-      "🧭 Adventure Together — by John Hanke"
+      "🗺️ Publish or Die — Taichi a.k.a. @mapconcierge",
+      "📷️ Only start something if you are willing to spend at least a decade on it. — Jan Erik Solem",
+      "🗺️ The expectations for people using maps is very different than it was 10 years ago. — Jan Erik Solem",
+      "🧭 Adventure Together — John Hanke"
     ];
-    function getWorldMessages() {
-      const el = document.getElementById("worldBannerMessages");
-      if (!el) return WORLD_MESSAGES_DEFAULT;
-      try {
-        const arr = JSON.parse(el.textContent);
-        if (Array.isArray(arr) && arr.length) return arr;
-      } catch (e) {}
+    function getWorldMessages(){
+      const el=document.getElementById("worldBannerMessages");
+      if(!el) return WORLD_MESSAGES_DEFAULT;
+      try{const arr=JSON.parse(el.textContent);if(Array.isArray(arr)&&arr.length) return arr;}catch(e){}
       return WORLD_MESSAGES_DEFAULT;
     }
-    function pickWorldMsg() {
-      const list = getWorldMessages();
-      return list[Math.floor(Math.random() * list.length)];
+    function pickWorldMsg(){const list=getWorldMessages();return list[Math.floor(Math.random()*list.length)];}
+    function showWorldBanner(){
+      const el=document.getElementById("worldBanner"); if(!el) return;
+      el.classList.remove("hide"); el.textContent="";
+      const strong=document.createElement("div"); strong.textContent=pickWorldMsg();
+      const sub=document.createElement("span"); sub.className="sub"; sub.textContent="Fetching a random 360° panorama for you…";
+      el.appendChild(strong); el.appendChild(sub);
+      el.classList.add("show"); el.style.display="block"; _worldShownAt=Date.now();
+      if(_worldHideTimer){clearTimeout(_worldHideTimer);_worldHideTimer=null;}
     }
-    function showWorldBanner() {
-      const el = document.getElementById("worldBanner");
-      if (!el) return;
-      el.classList.remove("hide");
-      el.textContent = "";
-      const strong = document.createElement("div");
-      strong.textContent = pickWorldMsg();
-      const sub = document.createElement("span");
-      sub.className = "sub";
-      sub.textContent = "Fetching a random 360° panorama for you…";
-      el.appendChild(strong);
-      el.appendChild(sub);
-
-      el.classList.add("show");
-      el.style.display = "block";
-      _worldShownAt = Date.now();
-      if (_worldHideTimer) { clearTimeout(_worldHideTimer); _worldHideTimer = null; }
-    }
-    function hideWorldBannerAfterMin() {
-      const el = document.getElementById("worldBanner");
-      if (!el || el.style.display === "none") return;
-      const elapsed = Date.now() - _worldShownAt;
-      const wait = Math.max(0, WORLD_BANNER_MIN_MS - elapsed);
-      if (_worldHideTimer) clearTimeout(_worldHideTimer);
-      _worldHideTimer = setTimeout(() => {
-        el.classList.remove("show");
-        el.classList.add("hide");
-        setTimeout(() => { el.style.display = "none"; el.classList.remove("hide"); }, 180);
-      }, wait);
+    function hideWorldBannerAfterMin(){
+      const el=document.getElementById("worldBanner"); if(!el||el.style.display==="none") return;
+      const elapsed=Date.now()-_worldShownAt; const wait=Math.max(0,WORLD_BANNER_MIN_MS-elapsed);
+      if(_worldHideTimer) clearTimeout(_worldHideTimer);
+      _worldHideTimer=setTimeout(()=>{el.classList.remove("show"); el.classList.add("hide"); setTimeout(()=>{el.style.display="none"; el.classList.remove("hide");},180);},wait);
     }
 
-    function rasterStyle(tiles, attribution) {
-      return {
-        "version": 8,
-        "sources": {
-          "base": { "type": "raster", "tiles": Array.isArray(tiles) ? tiles : [tiles], "tileSize": 256, "attribution": attribution }
-        },
-        "layers": [{ "id": "base", "type": "raster", "source": "base" }]
-      };
-    }
+    function rasterStyle(tiles, attribution){return {"version":8,"sources":{"base":{"type":"raster","tiles":Array.isArray(tiles)?tiles:[tiles],"tileSize":256,"attribution":attribution}},"layers":[{"id":"base","type":"raster","source":"base"}]};}
     const STYLES = {
-      OSM_STD: rasterStyle("https://tile.openstreetmap.org/{z}/{x}/{y}.png", "© OpenStreetMap contributors"),
-      ESRI_IMG: rasterStyle("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", "Sources: Esri, Maxar, Earthstar Geographics, and the GIS User Community"),
-      OSM_HOT: rasterStyle(["https://a.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png","https://b.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png","https://c.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png"], "© OpenStreetMap contributors, Tiles style by HOT"),
+      OSM_STD:rasterStyle("https://tile.openstreetmap.org/{z}/{x}/{y}.png","© OpenStreetMap contributors"),
+      ESRI_IMG:rasterStyle("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}","Sources: Esri, Maxar, Earthstar Geographics, and the GIS User Community"),
+      OSM_HOT:rasterStyle(["https://a.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png","https://b.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png","https://c.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png"],"© OpenStreetMap contributors, Tiles style by HOT"),
     };
+    function setBasemap(mode){map.setStyle(STYLES[mode]||STYLES.OSM_STD); map.once("styledata",()=>{restoreGuessLine();});}
 
-    function setBasemap(mode) {
-      map.setStyle(STYLES[mode] || STYLES.OSM_STD);
-      map.once("styledata", () => { restoreGuessLine(); });
+    function initMap(){
+      map = new maplibregl.Map({container:"map",style:STYLES.OSM_STD,center:[12,20],zoom:1.6,attributionControl:true});
+      map.addControl(new maplibregl.NavigationControl({visualizePitch:true}));
+      map.on("click",(e)=>setGuess([e.lngLat.lng,e.lngLat.lat]));
+      document.getElementById("basemapSelect").addEventListener("change",(e)=>setBasemap(e.target.value));
     }
-
-    function initMap() {
-      map = new maplibregl.Map({
-        container: "map",
-        style: STYLES.OSM_STD,
-        center: [12, 20],
-        zoom: 1.6,
-        attributionControl: true,
-      });
-      map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }));
-      map.on("click", (e) => setGuess([e.lngLat.lng, e.lngLat.lat]));
-      document.getElementById("basemapSelect").addEventListener("change", (e) => setBasemap(e.target.value));
-    }
-
-    function initViewer(imageId) {
+    function initViewer(imageId){
       const { Viewer } = mapillary;
       if (viewer) { viewer.moveTo(imageId).catch(console.error); return; }
       viewer = new Viewer({ accessToken: MAPILLARY_TOKEN, container: "mly", imageId, component: { cover: false } });
     }
 
-    function getFilterMode() { return document.getElementById("filterSelect").value; }
-    function getSelectedFamilies() { return Array.from(document.querySelectorAll(".family:checked")).map(el => el.value); }
-    function getSelectedTypes() { return Array.from(document.querySelectorAll(".type:checked")).map(el => el.value); }
-    function getActiveTokens() { return [...getSelectedFamilies(), ...getSelectedTypes()]; }
-    function detectionMatches(values, mode) {
-      if (mode === "NONE") return true;
-      if (!values || values.length === 0) return false;
-      if (mode === "TRAFFIC_SIGN_ANY") {
-        const prefixes = ["regulatory--", "warning--", "information--", "complementary--", "temporary--", "other-sign"];
-        return values.some(v => prefixes.some(p => v.startsWith(p)));
+    function getFilterMode(){return document.getElementById("filterSelect").value;}
+    function getSelectedFamilies(){return Array.from(document.querySelectorAll(".family:checked")).map(el=>el.value);}
+    function getSelectedTypes(){return Array.from(document.querySelectorAll(".type:checked")).map(el=>el.value);}
+    function getActiveTokens(){return [...getSelectedFamilies(),...getSelectedTypes()];}
+    function detectionMatches(values,mode){
+      if(mode==="NONE") return true;
+      if(!values||values.length===0) return false;
+      if(mode==="TRAFFIC_SIGN_ANY"){
+        const prefixes=["regulatory--","warning--","information--","complementary--","temporary--","other-sign"];
+        return values.some(v=>prefixes.some(p=>v.startsWith(p)));
       }
-      if (mode === "TRAFFIC_SIGN_PICK") {
-        const tokens = getActiveTokens();
-        if (tokens.length === 0) return false;
-        return values.some(v => tokens.some(t => v.startsWith(t)));
+      if(mode==="TRAFFIC_SIGN_PICK"){
+        const tokens=getActiveTokens(); if(tokens.length===0) return false;
+        return values.some(v=>tokens.some(t=>v.startsWith(t)));
       }
       return true;
     }
-
-    async function fetchDetections(imageId) {
-      const url = new URL(`https://graph.mapillary.com/${imageId}/detections`);
-      url.searchParams.set("access_token", MAPILLARY_TOKEN);
-      url.searchParams.set("fields", "id,value");
-      url.searchParams.set("limit", "500");
-      const res = await fetch(url.toString());
-      if (!res.ok) throw new Error("detections API error " + res.status);
-      const json = await res.json();
-      return (json && json.data ? json.data : []).map(d => d.value).filter(Boolean);
+    async function fetchDetections(imageId){
+      const url=new URL(`https://graph.mapillary.com/${imageId}/detections`);
+      url.searchParams.set("access_token",MAPILLARY_TOKEN); url.searchParams.set("fields","id,value"); url.searchParams.set("limit","500");
+      const res=await fetch(url.toString()); if(!res.ok) throw new Error("detections API error "+res.status);
+      const json=await res.json(); return (json&&json.data?json.data:[]).map(d=>d.value).filter(Boolean);
     }
 
-    async function pickRandomPano(regionKey) {
-      const r = REGION_BOXES[regionKey] || REGION_BOXES.WORLD;
-      const size = r.sizeDeg;
-      const mode = getFilterMode();
-
-      for (let attempt = 1; attempt <= MAX_FETCH_TRIES; attempt++) {
-        const lon = randBetween(r.lonMin, r.lonMax);
-        const lat = randBetween(r.latMin, r.latMax);
-        const bbox = [lon - size / 2, lat - size / 2, lon + size / 2, lat + size / 2];
-
-        const url = new URL("https://graph.mapillary.com/images");
-        const params = {
-          access_token: MAPILLARY_TOKEN,
-          fields: "id,computed_geometry",
-          is_pano: true,
-          limit: 25,
-          bbox: bbox.join(","),
-        };
-        Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
-
-        try {
-          const res = await fetch(url.toString());
-          if (!res.ok) throw new Error("API error " + res.status);
-          const json = await res.json();
-          const arr = json && json.data ? json.data.slice() : [];
-
-          shuffle(arr);
-          const maxN = Math.min(arr.length, MAX_PER_BBOX_CANDIDATES);
-
-          for (let i = 0; i < maxN; i++) {
-            const it = arr[i];
-            if (!it || !it.computed_geometry || !it.computed_geometry.coordinates) continue;
-            const [lng, lat] = it.computed_geometry.coordinates;
-
-            if (mode === "NONE") {
-              return { imageId: it.id, lng, lat };
-            }
-
-            try {
-              const detValues = await fetchDetections(it.id);
-              if (detectionMatches(detValues, mode)) {
-                return { imageId: it.id, lng, lat, detValues };
-              }
-            } catch (e) {
-              console.warn("detections fetch failed", e);
-            }
+    async function pickRandomPano(regionKey){
+      const r=REGION_BOXES[regionKey]||REGION_BOXES.WORLD;
+      const size=r.sizeDeg; const mode=getFilterMode();
+      for(let attempt=1;attempt<=MAX_FETCH_TRIES;attempt++){
+        const lon=randBetween(r.lonMin,r.lonMax); const lat=randBetween(r.latMin,r.latMax);
+        const bbox=[lon-size/2,lat-size/2,lon+size/2,lat+size/2];
+        const url=new URL("https://graph.mapillary.com/images");
+        const params={access_token:MAPILLARY_TOKEN,fields:"id,computed_geometry",is_pano:true,limit:25,bbox:bbox.join(",")};
+        Object.entries(params).forEach(([k,v])=>url.searchParams.set(k,v));
+        try{
+          const res=await fetch(url.toString()); if(!res.ok) throw new Error("API error "+res.status);
+          const json=await res.json(); const arr=json&&json.data?json.data.slice():[];
+          shuffle(arr); const maxN=Math.min(arr.length,MAX_PER_BBOX_CANDIDATES);
+          for(let i=0;i<maxN;i++){
+            const it=arr[i]; if(!it||!it.computed_geometry||!it.computed_geometry.coordinates) continue;
+            const [lng,lat]=it.computed_geometry.coordinates;
+            if(mode==="NONE"){ return {imageId:it.id,lng,lat}; }
+            try{
+              const detValues=await fetchDetections(it.id);
+              if(detectionMatches(detValues,mode)){ return {imageId:it.id,lng,lat,detValues}; }
+            }catch(e){ console.warn("detections fetch failed",e); }
           }
-        } catch (err) {
-          console.warn("Fetch attempt failed", attempt, err);
-        }
+        }catch(err){ console.warn("Fetch attempt failed",attempt,err); }
       }
       throw new Error("No candidates matched the conditions. Change the filter/area and try again.");
     }
 
-    function fitMapToRegion(regionKey) {
-      if (!map) return;
-      const r = REGION_BOXES[regionKey];
-      if (!r) return;
-      const bounds = new maplibregl.LngLatBounds([r.lonMin, r.latMin],[r.lonMax, r.latMax]);
-      try {
-        map.fitBounds(bounds, { padding: 30, duration: 600 });
-      } catch (e) {
-        console.warn("fitBounds failed:", e);
-      }
+    function fitMapToRegion(regionKey){
+      if(!map) return; const r=REGION_BOXES[regionKey]; if(!r) return;
+      const bounds=new maplibregl.LngLatBounds([r.lonMin,r.latMin],[r.lonMax,r.latMax]);
+      try{ map.fitBounds(bounds,{padding:30,duration:600}); }catch(e){ console.warn("fitBounds failed:",e); }
     }
 
-    function resetRoundUI() {
-      if (map && map.getSource(lineId)) { map.removeLayer(lineId); map.removeSource(lineId); }
-      if (truthMarker) { truthMarker.remove(); truthMarker = null; }
-      if (guessMarker) { guessMarker.remove(); guessMarker = null; }
-      document.getElementById("lastDistance").textContent = "—";
-      document.getElementById("result").textContent = "Look around the 360° panorama and make your guess!";
-      document.getElementById("detSummary").textContent = "";
-      lastGeoJSON = null; lastFilename = null;
+    function resetRoundUI(){
+      if(map&&map.getSource(lineId)){map.removeLayer(lineId);map.removeSource(lineId);}
+      if(truthMarker){truthMarker.remove();truthMarker=null;}
+      if(guessMarker){guessMarker.remove();guessMarker=null;}
+      document.getElementById("lastDistance").textContent="—";
+      document.getElementById("result").textContent="Look around the 360° panorama and make your guess!";
+      document.getElementById("detSummary").textContent="";
+      lastGeoJSON=null; lastFilename=null;
     }
 
-    async function nextRound() {
-      resetRoundUI();
-      round += 1;
-      updateRoundInfo();
-      setButtonsBusy(true);
-
-      const region = document.getElementById("regionSelect").value;
-      if (region === "WORLD") showWorldBanner();
-
-      try {
-        const pano = await pickRandomPano(region);
-        currentTruth = { lng: pano.lng, lat: pano.lat, imageId: pano.imageId };
-        initViewer(pano.imageId);
-
-        const dets = pano.detValues || [];
-        if (dets.length) {
-          const uniq = uniqueTopN(dets, 8);
-          document.getElementById("detSummary").innerHTML =
-            `Detections in this image: <span class="kbd">${uniq.join("</span>, <span class='kbd'>")}</span> etc.`;
-        } else if (getFilterMode() !== "NONE") {
-          document.getElementById("detSummary").textContent = "Detections: 0 (retried nearby candidates)";
+    async function nextRound(){
+      resetRoundUI(); round+=1; updateRoundInfo(); setButtonsBusy(true);
+      const region=document.getElementById("regionSelect").value; if(region==="WORLD") showWorldBanner();
+      try{
+        const pano=await pickRandomPano(region);
+        currentTruth={lng:pano.lng,lat:pano.lat,imageId:pano.imageId}; initViewer(pano.imageId);
+        const dets=pano.detValues||[];
+        if(dets.length){
+          const uniq=uniqueTopN(dets,8);
+          document.getElementById("detSummary").innerHTML=`Detections in this image: <span class="kbd">${uniq.join("</span>, <span class='kbd'>")}</span> etc.`;
+        }else if(getFilterMode()!=="NONE"){
+          document.getElementById("detSummary").textContent="Detections: 0 (retried nearby candidates)";
         }
-      } catch (err) {
-        round -= 1;
-        updateRoundInfo();
-        alert("Failed to fetch an image: " + err.message);
-      } finally {
-        if (region === "WORLD") hideWorldBannerAfterMin();
+      }catch(err){
+        round-=1; updateRoundInfo(); alert("Failed to fetch an image: "+err.message);
+      }finally{
+        if(region==="WORLD") hideWorldBannerAfterMin();
         setButtonsBusy(false);
       }
     }
 
-    function updateRoundInfo() {
-      document.getElementById("roundNum").textContent = String(round);
-      document.getElementById("roundMax").textContent = String(maxRounds);
-      document.getElementById("score").textContent = String(score);
+    function updateRoundInfo(){document.getElementById("roundNum").textContent=String(round);document.getElementById("roundMax").textContent=String(maxRounds);document.getElementById("score").textContent=String(score);}
+    function setButtonsBusy(b){
+      document.getElementById("submitBtn").disabled=b; document.getElementById("skipBtn").disabled=b; document.getElementById("newGameBtn").disabled=b;
+      document.getElementById("clearBtn").disabled=b; document.getElementById("filterSelect").disabled=b; document.getElementById("regionSelect").disabled=b;
+      document.getElementById("roundsSelect").disabled=b; document.querySelectorAll("#signPickerPanel input").forEach(el=>el.disabled=b);
+      document.getElementById("basemapSelect").disabled=b; document.getElementById("exportAllBtn").disabled=b; document.getElementById("clearAllBtn").disabled=b;
     }
 
-    function setButtonsBusy(b) {
-      document.getElementById("submitBtn").disabled = b;
-      document.getElementById("skipBtn").disabled = b;
-      document.getElementById("newGameBtn").disabled = b;
-      document.getElementById("clearBtn").disabled = b;
-      document.getElementById("filterSelect").disabled = b;
-      document.getElementById("regionSelect").disabled = b;
-      document.getElementById("roundsSelect").disabled = b;
-      document.querySelectorAll("#signPickerPanel input").forEach(el => el.disabled = b);
-      document.getElementById("basemapSelect").disabled = b;
-      document.getElementById("exportAllBtn").disabled = b;
-      document.getElementById("clearAllBtn").disabled = b;
+    function setGuess(lngLat){ if(guessMarker) guessMarker.remove(); guessMarker=new maplibregl.Marker({draggable:true}).setLngLat(lngLat).addTo(map); map.easeTo({center:lngLat,zoom:Math.max(map.getZoom(),2.5)}); }
+    function addTruthMarker(){ truthMarker=new maplibregl.Marker({color:"#00b3a4"}).setLngLat([currentTruth.lng,currentTruth.lat]).addTo(map); }
+    function drawLine(guess,truth){
+      const line={"type":"FeatureCollection","features":[{"type":"Feature","geometry":{"type":"LineString","coordinates":[guess,truth]},"properties":{}}]};
+      if(map.getSource(lineId)){ map.getSource(lineId).setData(line); } else { map.addSource(lineId,{type:"geojson",data:line}); map.addLayer({id:lineId,type:"line",source:lineId,paint:{"line-width":3}}); }
     }
+    function restoreGuessLine(){ if(!map||!guessMarker||!truthMarker) return; const g=guessMarker.getLngLat(); drawLine([g.lng,g.lat],[currentTruth.lng,currentTruth.lat]); }
+    function calcScore(distanceKm){ return Math.round(5000/(1+distanceKm/250)); }
 
-    function setGuess(lngLat) {
-      if (guessMarker) guessMarker.remove();
-      guessMarker = new maplibregl.Marker({ draggable: true }).setLngLat(lngLat).addTo(map);
-      map.easeTo({ center: lngLat, zoom: Math.max(map.getZoom(), 2.5) });
-    }
-    function addTruthMarker() {
-      truthMarker = new maplibregl.Marker({ color: "#00b3a4" }).setLngLat([currentTruth.lng, currentTruth.lat]).addTo(map);
-    }
-    function drawLine(guess, truth) {
-      const line = {"type":"FeatureCollection","features":[{"type":"Feature","geometry":{"type":"LineString","coordinates":[guess,truth]},"properties":{}}]};
-      if (map.getSource(lineId)) { map.getSource(lineId).setData(line); }
-      else { map.addSource(lineId, { type: "geojson", data: line }); map.addLayer({ id: lineId, type: "line", source: lineId, paint: { "line-width": 3 } }); }
-    }
-    function restoreGuessLine() {
-      if (!map || !guessMarker || !truthMarker) return;
-      const g = guessMarker.getLngLat();
-      drawLine([g.lng, g.lat], [currentTruth.lng, currentTruth.lat]);
-    }
-    function calcScore(distanceKm) { return Math.round(5000 / (1 + distanceKm / 250)); }
-
-    function buildAnswerFeatures({guessLng, guessLat, truthLng, truthLat, distanceKm, imageId, roundNum, roundScore, region, gameId, gameStartISO}) {
-      const dist = Number(distanceKm.toFixed(3));
-      const common = { round: roundNum, distance_km: dist, region, game_id: gameId, game_started_at: gameStartISO };
+    function buildAnswerFeatures({guessLng,guessLat,truthLng,truthLat,distanceKm,imageId,roundNum,roundScore,region,gameId,gameStartISO}){
+      const dist=Number(distanceKm.toFixed(3)); const common={round:roundNum,distance_km:dist,region,game_id:gameId,game_started_at:gameStartISO};
       return [
-        {
-          "type": "Feature",
-          "geometry": {"type": "Point", "coordinates": [truthLng, truthLat]},
-          "properties": { ...common, "role": "truth", "image_id": imageId }
-        },
-        {
-          "type": "Feature",
-          "geometry": {"type": "Point", "coordinates": [guessLng, guessLat]},
-          "properties": { ...common, "role": "guess", "round_score": roundScore }
-        },
-        {
-          "type": "Feature",
-          "geometry": {"type": "LineString", "coordinates": [[guessLng, guessLat],[truthLng, truthLat]]},
-          "properties": { ...common, "role": "guess_truth_line" }
-        }
+        {"type":"Feature","geometry":{"type":"Point","coordinates":[truthLng,truthLat]},"properties":{...common,"role":"truth","image_id":imageId}},
+        {"type":"Feature","geometry":{"type":"Point","coordinates":[guessLng,guessLat]},"properties":{...common,"role":"guess","round_score":roundScore}},
+        {"type":"Feature","geometry":{"type":"LineString","coordinates":[[guessLng,guessLat],[truthLng,truthLat]]},"properties":{...common,"role":"guess_truth_line"}}
       ];
     }
-
-    function asFeatureCollection(features, name="mapiguesser-answers") {
-      return { "type": "FeatureCollection", "name": name, "features": features };
-    }
-
-    function downloadBlob(obj, filename, mime="application/geo+json") {
-      const blob = new Blob([JSON.stringify(obj, null, 2)], { type: mime });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url; a.download = filename;
-      document.body.appendChild(a); a.click(); a.remove();
-      URL.revokeObjectURL(url);
-    }
-
-    function openResultDialog(msg, roundFC, filename) {
-      const dlg = document.getElementById("resultDialog");
-      const msgEl = document.getElementById("dialogMsg");
-      const dlBtn = document.getElementById("downloadGeoJSON");
-      msgEl.innerHTML = msg;
-      lastGeoJSON = roundFC;
-      lastFilename = filename;
-
-      dlBtn.onclick = () => {
-        if (!lastGeoJSON) return;
-        downloadBlob(lastGeoJSON, lastFilename || "answer.geojson");
-      };
-
-      document.getElementById("closeDialogBtn").onclick = () => { dlg.close(); };
-      document.getElementById("nextRoundBtn").onclick = () => { dlg.close(); endOrContinue(); };
-
+    function asFeatureCollection(features,name="mapiguesser-answers"){return {"type":"FeatureCollection","name":name,"features":features};}
+    function downloadBlob(obj,filename,mime="application/geo+json"){const blob=new Blob([JSON.stringify(obj,null,2)],{type:mime});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);}
+    function openResultDialog(msg,roundFC,filename){
+      const dlg=document.getElementById("resultDialog"); const msgEl=document.getElementById("dialogMsg"); const dlBtn=document.getElementById("downloadGeoJSON");
+      msgEl.innerHTML=msg; lastGeoJSON=roundFC; lastFilename=filename;
+      dlBtn.onclick=()=>{ if(!lastGeoJSON) return; downloadBlob(lastGeoJSON,lastFilename||"answer.geojson"); };
+      document.getElementById("closeDialogBtn").onclick=()=>{ dlg.close(); };
+      document.getElementById("nextRoundBtn").onclick=()=>{ dlg.close(); endOrContinue(); };
       dlg.showModal();
     }
-
-    function exportAllRounds() {
-      if (!allFeatures.length) {
-        alert("No rounds to export yet. Please judge a round first.");
-        return;
-      }
-      const fc = asFeatureCollection(allFeatures, "mapiguesser-all-answers");
-      const ts = new Date().toISOString().replace(/[:T]/g,'-').slice(0,19);
-      const fname = `mapiguesser-all-answers-${gameId || "session"}-${ts}.geojson`;
-      downloadBlob(fc, fname);
+    function exportAllRounds(){
+      if(!allFeatures.length){alert("No rounds to export yet. Please judge a round first.");return;}
+      const fc=asFeatureCollection(allFeatures,"mapiguesser-all-answers"); const ts=new Date().toISOString().replace(/[:T]/g,"-").slice(0,19);
+      const fname=`mapiguesser-all-answers-${gameId||"session"}-${ts}.geojson`; downloadBlob(fc,fname);
     }
-
-    function clearAllRounds() {
-      if (!allFeatures.length) return alert("There is nothing to clear.");
-      if (!confirm("Clear all accumulated results?")) return;
-      allFeatures = [];
-      alert("Cleared accumulated results.");
-    }
-
-    function endOrContinue() {
-      if (round >= maxRounds) {
-        alert(`Game over! Total score: ${score} pts`);
-      } else {
-        nextRound();
-      }
-    }
-
-    async function onSubmit() {
-      if (!currentTruth || !guessMarker) { alert("Please place your guess pin on the map first."); return; }
+    function clearAllRounds(){ if(!allFeatures.length) return alert("There is nothing to clear."); if(!confirm("Clear all accumulated results?")) return; allFeatures=[]; alert("Cleared accumulated results."); }
+    function endOrContinue(){ if(round>=maxRounds){ alert(`Game over! Total score: ${score} pts`); } else { nextRound(); } }
+    async function onSubmit(){
+      if(!currentTruth||!guessMarker){alert("Please place your guess pin on the map first.");return;}
       setButtonsBusy(true);
-      try {
-        const guess = guessMarker.getLngLat();
-        const truth = [currentTruth.lng, currentTruth.lat];
-        const distanceKm = turf.distance(turf.point([guess.lng, guess.lat]), turf.point(truth), { units: "kilometers" });
-        const pts = calcScore(distanceKm);
-        score += pts;
-        document.getElementById("lastDistance").textContent = distanceKm.toFixed(1) + " km";
-        document.getElementById("score").textContent = String(score);
-        document.getElementById("result").innerHTML =
-          `Correct location: <b>${truth[1].toFixed(5)}, ${truth[0].toFixed(5)}</b>.<br/>
-           Distance from your guess: <b>${distanceKm.toFixed(1)} km</b>. Round score: <b>${pts} pts</b>.`;
-        addTruthMarker();
-        drawLine([guess.lng, guess.lat], truth);
-        const bounds = new maplibregl.LngLatBounds();
-        bounds.extend([guess.lng, guess.lat]); bounds.extend(truth);
-        map.fitBounds(bounds, { padding: 50, duration: 1000 });
-
-        const roundNum = round;
-        const region = document.getElementById("regionSelect").value;
-        const feats = buildAnswerFeatures({
-          guessLng: guess.lng, guessLat: guess.lat,
-          truthLng: truth[0], truthLat: truth[1],
-          distanceKm, imageId: currentTruth.imageId,
-          roundNum, roundScore: pts, region, gameId, gameStartISO
-        });
+      try{
+        const guess=guessMarker.getLngLat(); const truth=[currentTruth.lng,currentTruth.lat];
+        const distanceKm=turf.distance(turf.point([guess.lng,guess.lat]),turf.point(truth),{units:"kilometers"});
+        const pts=calcScore(distanceKm); score+=pts;
+        document.getElementById("lastDistance").textContent=distanceKm.toFixed(1)+" km"; document.getElementById("score").textContent=String(score);
+        document.getElementById("result").innerHTML=`Correct location: <b>${truth[1].toFixed(5)}, ${truth[0].toFixed(5)}</b>.<br/>Distance from your guess: <b>${distanceKm.toFixed(1)} km</b>. Round score: <b>${pts} pts</b>.`;
+        addTruthMarker(); drawLine([guess.lng,guess.lat],truth);
+        const bounds=new maplibregl.LngLatBounds(); bounds.extend([guess.lng,guess.lat]); bounds.extend(truth); map.fitBounds(bounds,{padding:50,duration:1000});
+        const roundNum=round; const region=document.getElementById("regionSelect").value;
+        const feats=buildAnswerFeatures({guessLng:guess.lng,guessLat:guess.lat,truthLng:truth[0],truthLat:truth[1],distanceKm,imageId:currentTruth.imageId,roundNum,roundScore:pts,region,gameId,gameStartISO});
         allFeatures.push(...feats);
-
-        const roundFC = asFeatureCollection(feats, `mapiguesser-answer-round${roundNum}`);
-        const msg = `Correct location was <b>${truth[1].toFixed(5)}, ${truth[0].toFixed(5)}</b>.<br/>`
-          + `Distance from your answer was <b>${distanceKm.toFixed(1)} km</b>!`;
-        const ts = new Date().toISOString().replace(/[:T]/g,'-').slice(0,19);
-        const fname = `mapiguesser-answer-round${roundNum}-${ts}.geojson`;
-        openResultDialog(msg, roundFC, fname);
-
-      } catch (err) {
-        alert("Scoring failed: " + err.message);
-      } finally {
-        setButtonsBusy(false);
-      }
+        const roundFC=asFeatureCollection(feats,`mapiguesser-answer-round${roundNum}`);
+        const msg=`Correct location was <b>${truth[1].toFixed(5)}, ${truth[0].toFixed(5)}</b>.<br/>Distance from your answer was <b>${distanceKm.toFixed(1)} km</b>!`;
+        const ts=new Date().toISOString().replace(/[:T]/g,"-").slice(0,19); const fname=`mapiguesser-answer-round${roundNum}-${ts}.geojson`;
+        openResultDialog(msg,roundFC,fname);
+      }catch(err){ alert("Scoring failed: "+err.message); } finally{ setButtonsBusy(false); }
     }
 
-    function applyInitialRegionFromURL() {
-      const sp = new URLSearchParams(location.search);
-      let r = sp.get("region") || sp.get("r");
-      if (!r) return;
-      r = r.trim().toUpperCase().replace(/[^A-Z_]/g, "");
-      if (r === "LATINAMERICA" || r === "LATIN_AMERICA" || r === "LATIN" || r === "LATINAM" ) r = "LATAM";
-      if (r === "OCEANEA") r = "OCEANIA";
-      if (r === "MILAN") r = "MILANO";
-      if (r === "VENICE" || r === "VENEZIA") r = "VENEZIA";
-      if (r === "DEUTSCHLAND" || r === "ドイツ") r = "GERMANY";
-      if (r === "NEDERLAND" || r === "NEDERLANDS" || r === "OLANDA" || r === "オランダ") r = "NETHERLANDS";
-      if (r === "SCUOLA" || r === "SCUOLA_GIAPPONESE_MILANO" || r === "SCUOLA_GIAPPONESE_DI_MILANO" || r === "SJM") r = "SJMILANO";
-      if (REGION_BOXES[r]) {
-        const sel = document.getElementById("regionSelect");
-        sel.value = r;
-      }
+    function applyInitialRegionFromURL(){
+      const sp=new URLSearchParams(location.search); let r=sp.get("region")||sp.get("r"); if(!r) return;
+      r=r.trim().toUpperCase().replace(/[^A-Z_]/g,"");
+      if(r==="LATINAMERICA"||r==="LATIN_AMERICA"||r==="LATIN"||r==="LATINAM") r="LATAM";
+      if(r==="OCEANEA") r="OCEANIA";
+      if(r==="MILAN") r="MILANO";
+      if(r==="VENICE"||r==="VENEZIA") r="VENEZIA";
+      if(r==="DEUTSCHLAND"||r==="ドイツ") r="GERMANY";
+      if(r==="NEDERLAND"||r==="NEDERLANDS"||r==="OLANDA"||r==="オランダ") r="NETHERLANDS";
+      if(r==="SCUOLA"||r==="SCUOLA_GIAPPONESE_MILANO"||r==="SCUOLA_GIAPPONESE_DI_MILANO"||r==="SJM") r="SJMILANO";
+      if(r==="BOLDINASCO"||r==="BOLDI") r="BOLDINASCO";
+      if(REGION_BOXES[r]){ const sel=document.getElementById("regionSelect"); sel.value=r; }
     }
-    function updateRegionParamInURL() {
-      try {
-        const sel = document.getElementById("regionSelect");
-        if (!sel) return;
-        const r = (sel.value || "").toUpperCase();
-        const url = new URL(window.location.href);
-        url.searchParams.set("region", r);
-        history.replaceState({}, "", url.toString());
-      } catch (e) {
-        console.warn("URL update failed:", e);
-      }
+    function updateRegionParamInURL(){
+      try{const sel=document.getElementById("regionSelect"); if(!sel) return; const r=(sel.value||"").toUpperCase(); const url=new URL(window.location.href); url.searchParams.set("region",r); history.replaceState({}, "", url.toString());}catch(e){console.warn("URL update failed:",e);}
     }
 
-    function randBetween(min, max) { return min + Math.random() * (max - min); }
-    function shuffle(a) { for (let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; }
-    function uniqueTopN(values, n) { const m=new Map(); for (const v of values) m.set(v,(m.get(v)||0)+1); return [...m.entries()].sort((a,b)=>b[1]-a[1]).slice(0,n).map(([k])=>k); }
-    function makeGameId() { return Math.random().toString(36).slice(2, 10); }
+    function randBetween(min,max){return min+Math.random()*(max-min);}
+    function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+    function uniqueTopN(values,n){const m=new Map();for(const v of values)m.set(v,(m.get(v)||0)+1);return [...m.entries()].sort((a,b)=>b[1]-a[1]).slice(0,n).map(([k])=>k);}
+    function makeGameId(){return Math.random().toString(36).slice(2,10);}
 
-    window.addEventListener("DOMContentLoaded", () => {
+    window.addEventListener("DOMContentLoaded",()=>{
       initMap();
-
-      document.getElementById("submitBtn").addEventListener("click", onSubmit);
-      document.getElementById("clearBtn").addEventListener("click", () => { if (guessMarker) { guessMarker.remove(); guessMarker = null; } });
-      document.getElementById("skipBtn").addEventListener("click", () => nextRound());
-
-      document.getElementById("newGameBtn").addEventListener("click", () => {
-        score = 0; round = 0; maxRounds = parseInt(document.getElementById("roundsSelect").value, 10) || 10;
-        updateRoundInfo();
-        allFeatures = [];
-        gameId = makeGameId();
-        gameStartISO = new Date().toISOString();
-        updateRegionParamInURL();
-        const region = document.getElementById("regionSelect").value;
-        fitMapToRegion(region);
-        nextRound();
+      document.getElementById("submitBtn").addEventListener("click",onSubmit);
+      document.getElementById("clearBtn").addEventListener("click",()=>{if(guessMarker){guessMarker.remove();guessMarker=null;}});
+      document.getElementById("skipBtn").addEventListener("click",()=>nextRound());
+      document.getElementById("newGameBtn").addEventListener("click",()=>{
+        score=0; round=0; maxRounds=parseInt(document.getElementById("roundsSelect").value,10)||10;
+        updateRoundInfo(); allFeatures=[]; gameId=makeGameId(); gameStartISO=new Date().toISOString();
+        updateRegionParamInURL(); const region=document.getElementById("regionSelect").value; fitMapToRegion(region); nextRound();
       });
-
-      document.getElementById("filterSelect").addEventListener("change", (e) => {
-        const mode = e.target.value;
-        document.getElementById("signPickerPanel").style.display = (mode === "TRAFFIC_SIGN_PICK") ? "block" : "none";
-      });
+      document.getElementById("filterSelect").addEventListener("change",(e)=>{const mode=e.target.value; document.getElementById("signPickerPanel").style.display=(mode==="TRAFFIC_SIGN_PICK")?"block":"none";});
       document.getElementById("filterSelect").dispatchEvent(new Event("change"));
-
-      document.getElementById("checkAllFam").addEventListener("click", () => {
-        document.querySelectorAll(".family").forEach(el => el.checked = true);
-      });
-      document.getElementById("clearAllFam").addEventListener("click", () => {
-        document.querySelectorAll(".family").forEach(el => el.checked = false);
-      });
-
-      const regionSel = document.getElementById("regionSelect");
-      regionSel.addEventListener("change", () => {
-        fitMapToRegion(regionSel.value);
-      });
-
-      applyInitialRegionFromURL();
-      document.getElementById("newGameBtn").click();
+      document.getElementById("checkAllFam").addEventListener("click",()=>{document.querySelectorAll(".family").forEach(el=>el.checked=true);});
+      document.getElementById("clearAllFam").addEventListener("click",()=>{document.querySelectorAll(".family").forEach(el=>el.checked=false);});
+      const regionSel=document.getElementById("regionSelect"); regionSel.addEventListener("change",()=>{fitMapToRegion(regionSel.value);});
+      applyInitialRegionFromURL(); document.getElementById("newGameBtn").click();
     });
   </script>
 </body>
