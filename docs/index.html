@@ -70,6 +70,8 @@
             <option value="BERLIN">Berlin (Germany)</option>
             <option value="SJMILANO">Scuola Giapponese di Milano (IT)</option>
             <option value="BOLDINASCO">Boldinasco (Italy)</option>
+            <option value="DESENZANO">Desenzano (Italy)</option>
+            <option value="PAVIA">Pavia (Italy)</option>
           </select>
         </label>
         <label>Rounds:
@@ -157,19 +159,6 @@
     </div>
   </div>
 
-  <script id="worldBannerMessages" type="application/json">
-  [
-      "🗺️ Keep walking; persistence paid off. — inspired by Tadataka Ino",
-      "🛰️ May the FOSS4G be with you — inspired by Star Wars",
-      "🗺️ The story isn’t so much about the data and technology, and it never was. It’s the people. — Steve Coast",
-      "🌐 The world around you is not what it seems. — Ingress",
-      "🗺️ Publish or Die — Taichi a.k.a. @mapconcierge",
-      "📷️ Only start something if you are willing to spend at least a decade on it. — Jan Erik Solem",
-      "🗺️ The expectations for people using maps is very different than it was 10 years ago. — Jan Erik Solem",
-      "🧭 Adventure Together — John Hanke"
-  ]
-  </script>
-
   <dialog id="resultDialog">
     <h3 class="dialog-title">Result</h3>
     <div class="dialog-msg" id="dialogMsg"></div>
@@ -181,7 +170,7 @@
   </dialog>
 
   <script>
-    const VERSION = "v0.8.2";
+    const VERSION = "v0.8.4";
     window.addEventListener("DOMContentLoaded", () => {
       const el = document.getElementById("verBadge"); if (el && VERSION) el.textContent = VERSION;
     });
@@ -211,7 +200,9 @@
       AMSTERDAM:{latMin:52.350,latMax:52.390,lonMin:4.840,lonMax:4.960,sizeDeg:0.030},
       BERLIN:{latMin:52.490,latMax:52.540,lonMin:13.350,lonMax:13.470,sizeDeg:0.035},
       SJMILANO:{latMin:45.445228475453206,latMax:45.4641990029487,lonMin:9.120423710679688,lonMax:9.156463694786225,sizeDeg:0.010},
-      BOLDINASCO:{latMin:45.485115427373245,latMax:45.5018704053295,lonMin:9.12281726793367,lonMax:9.157919996081318,sizeDeg:0.010}
+      BOLDINASCO:{latMin:45.485115427373245,latMax:45.5018704053295,lonMin:9.12281726793367,lonMax:9.157919996081318,sizeDeg:0.010},
+      DESENZANO:{latMin:45.45493934577041,latMax:45.50531551903691,lonMin:10.519090347605015,lonMax:10.616871773539629,sizeDeg:0.020},
+      PAVIA:{latMin:45.173804772798206,latMax:45.210732883633085,lonMin:9.118266404723784,lonMax:9.19394034882393,sizeDeg:0.018}
     };
     const MAX_FETCH_TRIES = 60;
     const MAX_PER_BBOX_CANDIDATES = 18;
@@ -231,6 +222,7 @@
     let gameId = null;
     let gameStartISO = null;
 
+    // WORLD loading messages (single source of truth)
     const WORLD_BANNER_MIN_MS = 3000;
     let _worldShownAt = 0;
     let _worldHideTimer = null;
@@ -244,13 +236,8 @@
       "🗺️ The expectations for people using maps is very different than it was 10 years ago. — Jan Erik Solem",
       "🧭 Adventure Together — John Hanke"
     ];
-    function getWorldMessages(){
-      const el=document.getElementById("worldBannerMessages");
-      if(!el) return WORLD_MESSAGES_DEFAULT;
-      try{const arr=JSON.parse(el.textContent);if(Array.isArray(arr)&&arr.length) return arr;}catch(e){}
-      return WORLD_MESSAGES_DEFAULT;
-    }
-    function pickWorldMsg(){const list=getWorldMessages();return list[Math.floor(Math.random()*list.length)];}
+    function getWorldMessages(){ return WORLD_MESSAGES_DEFAULT; }
+    function pickWorldMsg(){ const list=getWorldMessages(); return list[Math.floor(Math.random()*list.length)]; }
     function showWorldBanner(){
       const el=document.getElementById("worldBanner"); if(!el) return;
       el.classList.remove("hide"); el.textContent="";
@@ -449,6 +436,8 @@
       if(r==="NEDERLAND"||r==="NEDERLANDS"||r==="OLANDA"||r==="オランダ") r="NETHERLANDS";
       if(r==="SCUOLA"||r==="SCUOLA_GIAPPONESE_MILANO"||r==="SCUOLA_GIAPPONESE_DI_MILANO"||r==="SJM") r="SJMILANO";
       if(r==="BOLDINASCO"||r==="BOLDI") r="BOLDINASCO";
+      if(r==="DESENZANO") r="DESENZANO";
+      if(r==="PAVIA") r="PAVIA";
       if(REGION_BOXES[r]){ const sel=document.getElementById("regionSelect"); sel.value=r; }
     }
     function updateRegionParamInURL(){
