@@ -63,6 +63,7 @@
             <option value="DELFT">Delft (Netherlands)</option>
             <option value="JAPAN">Japan</option>
             <option value="TOKYO">Tokyo (Japan)</option>
+            <option value="TOKOROZAWA">Tokorozawa (Japan)</option>
             <option value="ITALY">Italy</option>
             <option value="MILANO">Milan (Italy)</option>
             <option value="COMO">Como (Italy)</option>
@@ -170,7 +171,7 @@
   </dialog>
 
   <script>
-    const VERSION = "v0.8.4";
+    const VERSION = "v0.8.5";
     window.addEventListener("DOMContentLoaded", () => {
       const el = document.getElementById("verBadge"); if (el && VERSION) el.textContent = VERSION;
     });
@@ -193,6 +194,7 @@
       DELFT:{latMin:51.980,latMax:52.030,lonMin:4.300,lonMax:4.420,sizeDeg:0.015},
       JAPAN:{latMin:24,latMax:46,lonMin:122,lonMax:146,sizeDeg:0.35},
       TOKYO:{latMin:35.600,latMax:35.740,lonMin:139.650,lonMax:139.840,sizeDeg:0.060},
+      TOKOROZAWA:{latMin:35.759,latMax:35.846,lonMin:139.372,lonMax:139.549,sizeDeg:0.020},
       ITALY:{latMin:36.5,latMax:47.5,lonMin:6.5,lonMax:18.8,sizeDeg:0.35},
       MILANO:{latMin:45.424,latMax:45.513,lonMin:9.100,lonMax:9.280,sizeDeg:0.020},
       COMO:{latMin:45.788,latMax:45.823,lonMin:9.060,lonMax:9.112,sizeDeg:0.025},
